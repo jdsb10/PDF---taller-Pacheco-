@@ -29,6 +29,17 @@ function formatFecha(value) {
   return value;
 }
 
+function decodeSignature(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:image\/png;base64,(.+)$/);
+  if (!match) return null;
+  try {
+    return Buffer.from(match[1], 'base64');
+  } catch (err) {
+    return null;
+  }
+}
+
 function drawRow(doc, x, y, height, cells) {
   let cx = x;
   cells.forEach((cell) => {
@@ -111,9 +122,13 @@ router.post('/generate-pdf', (req, res) => {
     doc.font('Helvetica').text(value || '');
     ry = doc.y + 4;
   };
+  const vehiculo = [body.vehiculoMarca, body.vehiculoAnio].filter(Boolean).join(' ');
+
   rightLine('COTIZACIÓN No:', body.cotizacionNo);
   rightLine('FECHA:', formatFecha(body.fecha));
   rightLine('CLIENTE:', body.cliente);
+  if (vehiculo) rightLine('VEHÍCULO:', vehiculo);
+  if (body.placa) rightLine('PLACA:', body.placa);
   rightLine('VIGENCIA DE LA OFERTA:', formatFecha(body.vigencia), true);
 
   y = Math.max(infoBottom, ry) + 20;
@@ -201,6 +216,14 @@ router.post('/generate-pdf', (req, res) => {
     y = 40;
   }
   const sigWidth = pageWidth / 2 - 20;
+  const clienteSignature = decodeSignature(body.firmaCliente);
+  const tallerSignature = decodeSignature(body.firmaTaller);
+  if (clienteSignature) {
+    doc.image(clienteSignature, marginX, y - 48, { fit: [sigWidth, 44] });
+  }
+  if (tallerSignature) {
+    doc.image(tallerSignature, marginX + pageWidth - sigWidth, y - 48, { fit: [sigWidth, 44] });
+  }
   doc.moveTo(marginX, y).lineTo(marginX + sigWidth, y).stroke();
   doc.moveTo(marginX + pageWidth - sigWidth, y).lineTo(marginX + pageWidth, y).stroke();
   doc

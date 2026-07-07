@@ -113,9 +113,14 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     fecha: document.getElementById('fecha').value,
     cliente: document.getElementById('cliente').value,
     vigencia: document.getElementById('vigencia').value,
+    vehiculoMarca: document.getElementById('vehiculoMarca').value,
+    vehiculoAnio: document.getElementById('vehiculoAnio').value,
+    placa: document.getElementById('placa').value,
     items,
     descuentos: Number(descuentosInput.value) || 0,
     notas: document.getElementById('notas').value,
+    firmaCliente: signatures.cliente,
+    firmaTaller: signatures.taller,
   };
 
   try {
@@ -189,6 +194,100 @@ document.getElementById('password-form').addEventListener('submit', async (event
   } catch (err) {
     messageEl.textContent = 'Error de conexión con el servidor';
   }
+});
+
+// ----- Firmas -----
+const signatures = { cliente: null, taller: null };
+const signatureModal = document.getElementById('signature-modal');
+const signatureCanvas = document.getElementById('signature-canvas');
+const signatureCtx = signatureCanvas.getContext('2d');
+const signatureModalTitle = document.getElementById('signature-modal-title');
+const signatureMessage = document.getElementById('signature-message');
+let currentSignatureTarget = null;
+let isDrawingSignature = false;
+let hasDrawnSignature = false;
+
+function getCanvasPoint(event) {
+  const rect = signatureCanvas.getBoundingClientRect();
+  const scaleX = signatureCanvas.width / rect.width;
+  const scaleY = signatureCanvas.height / rect.height;
+  return {
+    x: (event.clientX - rect.left) * scaleX,
+    y: (event.clientY - rect.top) * scaleY,
+  };
+}
+
+function clearSignatureCanvas() {
+  signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+  hasDrawnSignature = false;
+}
+
+signatureCanvas.addEventListener('pointerdown', (event) => {
+  isDrawingSignature = true;
+  hasDrawnSignature = true;
+  const { x, y } = getCanvasPoint(event);
+  signatureCtx.beginPath();
+  signatureCtx.moveTo(x, y);
+  signatureCanvas.setPointerCapture(event.pointerId);
+});
+
+signatureCanvas.addEventListener('pointermove', (event) => {
+  if (!isDrawingSignature) return;
+  const { x, y } = getCanvasPoint(event);
+  signatureCtx.lineWidth = 2;
+  signatureCtx.lineCap = 'round';
+  signatureCtx.strokeStyle = '#000';
+  signatureCtx.lineTo(x, y);
+  signatureCtx.stroke();
+});
+
+function stopDrawingSignature() {
+  isDrawingSignature = false;
+}
+
+signatureCanvas.addEventListener('pointerup', stopDrawingSignature);
+signatureCanvas.addEventListener('pointerleave', stopDrawingSignature);
+signatureCanvas.addEventListener('pointercancel', stopDrawingSignature);
+
+function updateSignaturePreview(target) {
+  const preview = document.getElementById(`preview-${target}`);
+  const dataUrl = signatures[target];
+  preview.innerHTML = dataUrl ? '' : 'Sin firmar';
+  if (dataUrl) {
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.alt = 'Firma';
+    preview.appendChild(img);
+  }
+}
+
+document.querySelectorAll('.btn-firmar').forEach((button) => {
+  button.addEventListener('click', () => {
+    currentSignatureTarget = button.dataset.target;
+    signatureModalTitle.textContent =
+      currentSignatureTarget === 'cliente' ? 'Firma del Cliente' : 'Firma de Taller Pacheco';
+    signatureMessage.textContent = '';
+    clearSignatureCanvas();
+    signatureModal.classList.remove('hidden');
+  });
+});
+
+document.getElementById('btn-clear-signature').addEventListener('click', () => {
+  clearSignatureCanvas();
+});
+
+document.getElementById('btn-cancel-signature').addEventListener('click', () => {
+  signatureModal.classList.add('hidden');
+});
+
+document.getElementById('btn-save-signature').addEventListener('click', () => {
+  if (!hasDrawnSignature) {
+    signatureMessage.textContent = 'Dibuja una firma antes de guardar';
+    return;
+  }
+  signatures[currentSignatureTarget] = signatureCanvas.toDataURL('image/png');
+  updateSignaturePreview(currentSignatureTarget);
+  signatureModal.classList.add('hidden');
 });
 
 loadUser();
