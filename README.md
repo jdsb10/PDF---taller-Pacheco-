@@ -11,10 +11,6 @@ npm start
 
 Luego abre `http://localhost:3000` en el navegador.
 
-## Login por defecto
-
-- **Correo:** jahn@taller.com
-- **Contraseña:** tallerpacheco+
 
 La contraseña se puede cambiar desde la app (botón "Cambiar contraseña" en la barra superior). El cambio se guarda en `server/data/credentials.json`, que se crea automáticamente la primera vez que se corre el servidor.
 
