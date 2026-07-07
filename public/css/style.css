@@ -1,0 +1,309 @@
+:root {
+  --yellow: #f2c200;
+  --black: #1a1a1a;
+  --gray: #d9d9d9;
+  --border: #c9c9c9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f4f4;
+  color: var(--black);
+}
+
+/* ----- Login ----- */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #fff;
+  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-card h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.login-card .subtitle {
+  text-align: center;
+  color: #666;
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+
+/* ----- Barra superior ----- */
+.topbar {
+  background: var(--black);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+}
+
+.topbar .brand {
+  font-weight: bold;
+  color: var(--yellow);
+  font-size: 18px;
+}
+
+.topbar .actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.topbar .actions span {
+  font-size: 13px;
+  color: #ddd;
+  margin-right: 6px;
+}
+
+/* ----- Layout general ----- */
+.container {
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 0 16px 60px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 16px;
+  border-bottom: 2px solid var(--yellow);
+  padding-bottom: 8px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 16px;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- Tabla de items ----- */
+table.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+table.items th {
+  background: var(--gray);
+  font-size: 12px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+}
+
+table.items td {
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+
+table.items td input {
+  border: none;
+  width: 100%;
+  padding: 6px;
+  font-size: 13px;
+}
+
+table.items td input:focus {
+  outline: 2px solid var(--yellow);
+}
+
+table.items .col-actions {
+  width: 36px;
+  text-align: center;
+}
+
+.row-remove {
+  background: none;
+  border: none;
+  color: #b00020;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ----- Totales ----- */
+.totals {
+  max-width: 320px;
+  margin-left: auto;
+}
+
+.totals .line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-top: none;
+  font-size: 14px;
+}
+
+.totals .line:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.totals .line.total {
+  background: var(--gray);
+  font-weight: bold;
+}
+
+.totals .line input {
+  width: 120px;
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+/* ----- Botones ----- */
+button,
+.btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.btn-primary {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.btn-primary:hover {
+  background: #d9ac00;
+}
+
+.btn-secondary {
+  background: #eee;
+  color: var(--black);
+}
+
+.btn-secondary:hover {
+  background: #ddd;
+}
+
+.btn-link {
+  background: none;
+  color: var(--yellow);
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-danger {
+  background: #b00020;
+  color: #fff;
+}
+
+.actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.generate-bar {
+  text-align: center;
+  margin: 20px 0 40px;
+}
+
+.generate-bar button {
+  font-size: 16px;
+  padding: 14px 32px;
+}
+
+/* ----- Mensajes ----- */
+.message {
+  font-size: 13px;
+  margin-top: 10px;
+  min-height: 18px;
+}
+
+.message.error {
+  color: #b00020;
+}
+
+.message.success {
+  color: #1a7a1a;
+}
+
+/* ----- Modal cambiar contraseña ----- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal-backdrop.hidden {
+  display: none;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.modal h3 {
+  margin-top: 0;
+}
+
+.modal .actions-row {
+  margin-top: 18px;
+}

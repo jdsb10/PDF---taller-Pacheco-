@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taller Pacheco - Cotizaciones</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">TALLER PACHECO</div>
+    <div class="actions">
+      <span id="user-email"></span>
+      <button class="btn btn-link" id="btn-change-password">Cambiar contraseña</button>
+      <button class="btn btn-secondary" id="btn-logout">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h2>Datos de la cotización</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="cotizacionNo">Cotización No</label>
+          <input type="text" id="cotizacionNo" />
+        </div>
+        <div class="field">
+          <label for="fecha">Fecha</label>
+          <input type="date" id="fecha" />
+        </div>
+        <div class="field">
+          <label for="cliente">Cliente</label>
+          <input type="text" id="cliente" placeholder="Nombre del cliente" />
+        </div>
+        <div class="field">
+          <label for="vigencia">Vigencia de la oferta</label>
+          <input type="date" id="vigencia" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Trabajo y materiales</h2>
+      <table class="items">
+        <thead>
+          <tr>
+            <th>Descripción de trabajo/mano de obra</th>
+            <th>Materiales/Repuestos (si aplica)</th>
+            <th>Tiempo estimado (días/horas)</th>
+            <th>Valor estimado</th>
+            <th>Total</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+      <button class="btn btn-secondary" id="btn-add-row">+ Agregar fila</button>
+    </div>
+
+    <div class="card">
+      <h2>Totales</h2>
+      <div class="totals">
+        <div class="line">
+          <span>SUBTOTAL</span>
+          <span id="subtotal-display">$ 0</span>
+        </div>
+        <div class="line">
+          <span>IVA (19%)</span>
+          <span id="iva-display">$ 0</span>
+        </div>
+        <div class="line">
+          <span>DESCUENTOS</span>
+          <input type="number" id="descuentos" value="0" min="0" />
+        </div>
+        <div class="line total">
+          <span>TOTAL ESTIMADO A PAGAR</span>
+          <span id="total-display">$ 0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Notas y términos</h2>
+      <div class="field">
+        <textarea id="notas" rows="4"></textarea>
+      </div>
+    </div>
+
+    <div class="generate-bar">
+      <button class="btn btn-primary" id="btn-generate">Generar PDF</button>
+      <p class="message" id="generate-message"></p>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="password-modal">
+    <div class="modal">
+      <h3>Cambiar contraseña</h3>
+      <form id="password-form">
+        <div class="field">
+          <label for="current-password">Contraseña actual</label>
+          <input type="password" id="current-password" required />
+        </div>
+        <div class="field">
+          <label for="new-password">Nueva contraseña</label>
+          <input type="password" id="new-password" required minlength="6" />
+        </div>
+        <p class="message error" id="password-message"></p>
+        <div class="actions-row">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-password">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
