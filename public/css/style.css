@@ -107,7 +107,12 @@ body {
   margin-bottom: 4px;
 }
 
+.field-narrow {
+  max-width: 220px;
+}
+
 .field input,
+.field select,
 .field textarea {
   width: 100%;
   padding: 9px 10px;

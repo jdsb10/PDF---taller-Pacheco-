@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Taller Pacheco - Facturas</title>
+  <title>Taller Pacheco - Cotizaciones y Facturas</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -18,10 +18,17 @@
 
   <div class="container">
     <div class="card">
-      <h2>Datos de la factura</h2>
+      <h2>Datos del documento</h2>
+      <div class="field field-narrow">
+        <label for="tipoDocumento">Tipo de documento</label>
+        <select id="tipoDocumento">
+          <option value="cotizacion">Cotización</option>
+          <option value="factura">Factura</option>
+        </select>
+      </div>
       <div class="grid">
         <div class="field">
-          <label for="cotizacionNo">Factura No</label>
+          <label for="cotizacionNo" id="label-numero">Cotización No</label>
           <input type="text" id="cotizacionNo" />
         </div>
         <div class="field">
@@ -33,7 +40,7 @@
           <input type="text" id="cliente" placeholder="Nombre del cliente" />
         </div>
         <div class="field">
-          <label for="vigencia">Vigencia de la oferta</label>
+          <label for="vigencia" id="label-vigencia">Vigencia de la oferta</label>
           <input type="date" id="vigencia" />
         </div>
       </div>

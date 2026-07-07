@@ -66,6 +66,8 @@ router.post('/generate-pdf', (req, res) => {
   const body = req.body || {};
   const items = Array.isArray(body.items) ? body.items : [];
   const descuentos = Number(body.descuentos) || 0;
+  const esFactura = body.tipoDocumento === 'factura';
+  const tituloDocumento = esFactura ? 'FACTURA' : 'COTIZACIÓN';
 
   const subtotal = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   const iva = subtotal * 0.19;
@@ -75,7 +77,8 @@ router.post('/generate-pdf', (req, res) => {
 
   res.setHeader('Content-Type', 'application/pdf');
   const safeNumber = (body.cotizacionNo || 'sin-numero').toString().replace(/[^a-zA-Z0-9-_]/g, '');
-  res.setHeader('Content-Disposition', `attachment; filename="factura-${safeNumber}.pdf"`);
+  const nombreArchivo = esFactura ? 'factura' : 'cotizacion';
+  res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}-${safeNumber}.pdf"`);
   doc.pipe(res);
 
   const marginX = 40;
@@ -113,7 +116,7 @@ router.post('/generate-pdf', (req, res) => {
     .fillColor('#000')
     .font('Helvetica-Bold')
     .fontSize(17)
-    .text('FACTURA', rightColX, y + 6, { width: rightColWidth, align: 'center' });
+    .text(tituloDocumento, rightColX, y + 6, { width: rightColWidth, align: 'center' });
 
   let ry = y + 38;
   const rightLine = (label, value, extraGapBefore) => {
@@ -124,12 +127,12 @@ router.post('/generate-pdf', (req, res) => {
   };
   const vehiculo = [body.vehiculoMarca, body.vehiculoAnio].filter(Boolean).join(' ');
 
-  rightLine('FACTURA No:', body.cotizacionNo);
+  rightLine(`${tituloDocumento} No:`, body.cotizacionNo);
   rightLine('FECHA:', formatFecha(body.fecha));
   rightLine('CLIENTE:', body.cliente);
   if (vehiculo) rightLine('VEHÍCULO:', vehiculo);
   if (body.placa) rightLine('PLACA:', body.placa);
-  rightLine('VIGENCIA DE LA OFERTA:', formatFecha(body.vigencia), true);
+  rightLine(esFactura ? 'FECHA DE VENCIMIENTO:' : 'VIGENCIA DE LA OFERTA:', formatFecha(body.vigencia), true);
 
   y = Math.max(infoBottom, ry) + 20;
 
@@ -206,7 +209,9 @@ router.post('/generate-pdf', (req, res) => {
   y = doc.y + 4;
   const notas =
     body.notas ||
-    'Términos de Pago: Validez de la Factura:\nLos repuestos adicionales no facturados se facturarán por separado.\nSe requiere una aprobación por escrito para iniciar el trabajo.';
+    `Términos de Pago: Validez de la ${esFactura ? 'Factura' : 'Cotización'}:\n` +
+      `Los repuestos adicionales no ${esFactura ? 'facturados' : 'cotizados'} se facturarán por separado.\n` +
+      'Se requiere una aprobación por escrito para iniciar el trabajo.';
   doc.font('Helvetica').fontSize(9.5).text(notas, marginX, y, { width: pageWidth });
   y = doc.y + 50;
 

@@ -54,22 +54,60 @@ function recalcTotals() {
 document.getElementById('btn-add-row').addEventListener('click', () => addRow());
 descuentosInput.addEventListener('input', recalcTotals);
 
-function suggestCotizacionNo() {
+function suggestDocumentNo(tipo) {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
-  return `FAC-${y}${m}${d}`;
+  const prefix = tipo === 'factura' ? 'FAC' : 'COT';
+  return `${prefix}-${y}${m}${d}`;
 }
 
+function buildDefaultNotas(tipo) {
+  const palabra = tipo === 'factura' ? 'Factura' : 'Cotización';
+  const participio = tipo === 'factura' ? 'facturados' : 'cotizados';
+  return (
+    `Términos de Pago: Validez de la ${palabra}:\n` +
+    `Los repuestos adicionales no ${participio} se facturarán por separado.\n` +
+    'Se requiere una aprobación por escrito para iniciar el trabajo.'
+  );
+}
+
+const tipoDocumentoSelect = document.getElementById('tipoDocumento');
+const numeroInput = document.getElementById('cotizacionNo');
+const notasTextarea = document.getElementById('notas');
+let lastAutoNumero = '';
+let lastAutoNotas = '';
+
+function applyDocumentType() {
+  const tipo = tipoDocumentoSelect.value;
+  const esFactura = tipo === 'factura';
+
+  document.getElementById('label-numero').textContent = esFactura ? 'Factura No' : 'Cotización No';
+  document.getElementById('label-vigencia').textContent = esFactura
+    ? 'Fecha de vencimiento'
+    : 'Vigencia de la oferta';
+
+  if (numeroInput.value === lastAutoNumero) {
+    lastAutoNumero = suggestDocumentNo(tipo);
+    numeroInput.value = lastAutoNumero;
+  }
+  if (notasTextarea.value === lastAutoNotas) {
+    lastAutoNotas = buildDefaultNotas(tipo);
+    notasTextarea.value = lastAutoNotas;
+  }
+}
+
+tipoDocumentoSelect.addEventListener('change', applyDocumentType);
+
 function initForm() {
-  document.getElementById('cotizacionNo').value = suggestCotizacionNo();
+  lastAutoNumero = suggestDocumentNo(tipoDocumentoSelect.value);
+  numeroInput.value = lastAutoNumero;
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('fecha').value = today;
-  document.getElementById('notas').value =
-    'Términos de Pago: Validez de la Factura:\n' +
-    'Los repuestos adicionales no facturados se facturarán por separado.\n' +
-    'Se requiere una aprobación por escrito para iniciar el trabajo.';
+  lastAutoNotas = buildDefaultNotas(tipoDocumentoSelect.value);
+  notasTextarea.value = lastAutoNotas;
+  applyDocumentType();
 
   for (let i = 0; i < 3; i += 1) addRow();
   recalcTotals();
@@ -109,6 +147,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   }));
 
   const payload = {
+    tipoDocumento: tipoDocumentoSelect.value,
     cotizacionNo: document.getElementById('cotizacionNo').value,
     fecha: document.getElementById('fecha').value,
     cliente: document.getElementById('cliente').value,
@@ -141,7 +180,8 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `factura-${payload.cotizacionNo || 'sin-numero'}.pdf`;
+    const prefijoArchivo = payload.tipoDocumento === 'factura' ? 'factura' : 'cotizacion';
+    link.download = `${prefijoArchivo}-${payload.cotizacionNo || 'sin-numero'}.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
