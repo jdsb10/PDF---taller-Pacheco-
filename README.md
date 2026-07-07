@@ -1,6 +1,6 @@
-# Taller Pacheco — Cotizaciones
+# Taller Pacheco — Facturas
 
-App sencilla para generar cotizaciones en PDF con el formato de Taller Pacheco.
+App sencilla para generar facturas en PDF con el formato de Taller Pacheco.
 
 ## Cómo correrla
 

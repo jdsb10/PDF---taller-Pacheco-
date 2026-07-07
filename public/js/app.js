@@ -59,7 +59,7 @@ function suggestCotizacionNo() {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
-  return `COT-${y}${m}${d}`;
+  return `FAC-${y}${m}${d}`;
 }
 
 function initForm() {
@@ -67,8 +67,8 @@ function initForm() {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('fecha').value = today;
   document.getElementById('notas').value =
-    'Términos de Pago: Validez de la Cotización:\n' +
-    'Los repuestos adicionales no cotizados se facturarán por separado.\n' +
+    'Términos de Pago: Validez de la Factura:\n' +
+    'Los repuestos adicionales no facturados se facturarán por separado.\n' +
     'Se requiere una aprobación por escrito para iniciar el trabajo.';
 
   for (let i = 0; i < 3; i += 1) addRow();
@@ -141,7 +141,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `cotizacion-${payload.cotizacionNo || 'sin-numero'}.pdf`;
+    link.download = `factura-${payload.cotizacionNo || 'sin-numero'}.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
