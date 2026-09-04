@@ -1,118 +1,18 @@
 const path = require('path');
-const crypto = require('crypto');
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
 const app = express();
 
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
-const DEFAULT_EMAIL = process.env.DEFAULT_EMAIL || 'jahn@taller.com';
-const DEFAULT_PASSWORD_HASH = process.env.DEFAULT_PASSWORD_HASH || bcrypt.hashSync('tallerpacheco+', 10);
-
 const LOGO_PATH = path.join(__dirname, '..', 'server', 'assets', 'logo.png');
 const YELLOW = '#f2c200';
 const GRAY = '#d9d9d9';
 
-function signCookie(value, secret) {
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(value);
-  return hmac.digest('hex');
-}
-
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (!cookieHeader) return cookies;
-  cookieHeader.split(';').forEach((c) => {
-    const [key, ...rest] = c.split('=');
-    cookies[key.trim()] = rest.join('=').trim();
-  });
-  return cookies;
-}
-
-function getSessionUser(req) {
-  const cookies = parseCookies(req.headers.cookie);
-  const sessionCookie = cookies['taller_pacheco_sid'];
-  if (!sessionCookie) return null;
-  const [emailB64, signature] = sessionCookie.split('.');
-  if (!emailB64 || !signature) return null;
-  const expected = signCookie(emailB64, SESSION_SECRET);
-  if (signature !== expected) return null;
-  try {
-    return JSON.parse(Buffer.from(emailB64, 'base64').toString());
-  } catch {
-    return null;
-  }
-}
-
-function setSessionCookie(res, email) {
-  const payload = Buffer.from(JSON.stringify({ email })).toString('base64');
-  const signature = signCookie(payload, SESSION_SECRET);
-  const cookie = `taller_pacheco_sid=${payload}.${signature}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${8 * 60 * 60}`;
-  res.setHeader('Set-Cookie', cookie);
-}
-
-function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', 'taller_pacheco_sid=; Path=/; HttpOnly; Max-Age=0');
-}
-
-function requireAuthPage(req, res, next) {
-  const user = getSessionUser(req);
-  if (user) return next();
-  return res.redirect('/login.html');
-}
-
-function requireAuthApi(req, res, next) {
-  const user = getSessionUser(req);
-  if (user) {
-    req.sessionUser = user;
-    return next();
-  }
-  return res.status(401).json({ error: 'No autenticado' });
-}
-
 app.use(express.json({ limit: '5mb' }));
 
-app.get('/login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
-});
-
-app.get(['/', '/app.html'], requireAuthPage, (req, res) => {
+app.get(['/', '/app.html'], (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'app.html'));
-});
-
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Falta email o contrasena' });
-  }
-  const emailMatch = email.trim().toLowerCase() === DEFAULT_EMAIL.toLowerCase();
-  const passwordMatch = emailMatch && bcrypt.compareSync(password, DEFAULT_PASSWORD_HASH);
-  if (!emailMatch || !passwordMatch) {
-    return res.status(401).json({ error: 'Email o contrasena incorrectos' });
-  }
-  setSessionCookie(res, DEFAULT_EMAIL);
-  res.json({ email: DEFAULT_EMAIL });
-});
-
-app.post('/api/auth/logout', (req, res) => {
-  clearSessionCookie(res);
-  res.json({ ok: true });
-});
-
-app.get('/api/auth/me', (req, res) => {
-  const user = getSessionUser(req);
-  if (!user) return res.status(401).json({ error: 'No autenticado' });
-  res.json({ email: user.email });
-});
-
-app.post('/api/auth/change-password', requireAuthApi, (req, res) => {
-  const { newPassword } = req.body || {};
-  if (!newPassword || newPassword.length < 6) {
-    return res.status(400).json({ error: 'La nueva contrasena debe tener al menos 6 caracteres' });
-  }
-  res.json({ ok: true, message: 'Contrasena actualizada (reinicia el servidor para aplicar en entorno local)' });
 });
 
 function money(n) {
@@ -168,7 +68,7 @@ const BUSINESS = {
   correo: 'Correo: Janhcarlos89@gmail.com',
 };
 
-app.post('/api/quote/generate-pdf', requireAuthApi, (req, res) => {
+app.post('/api/quote/generate-pdf', (req, res) => {
   const body = req.body || {};
   const items = Array.isArray(body.items) ? body.items : [];
   const descuentos = Number(body.descuentos) || 0;
@@ -354,7 +254,7 @@ function drawSectionHeader(doc, x, y, width, text) {
   return y + height + 6;
 }
 
-app.post('/api/quote/generate-diagnostic-pdf', requireAuthApi, (req, res) => {
+app.post('/api/quote/generate-diagnostic-pdf', (req, res) => {
   const b = req.body || {};
   const hallazgos = Array.isArray(b.hallazgos) ? b.hallazgos : [];
   const procedimientos = Array.isArray(b.procedimientos) ? b.procedimientos : [];
@@ -391,20 +291,30 @@ app.post('/api/quote/generate-diagnostic-pdf', requireAuthApi, (req, res) => {
   const colW = pageWidth / 2;
 
   function drawFieldRow(label, value, cx, cy, cw) {
-    doc.font('Helvetica-Bold').fontSize(9).text(label + ': ', cx, cy, { continued: true, width: cw });
-    doc.font('Helvetica').text(value || '___________________________');
+    doc.font('Helvetica-Bold').fontSize(9)
+      .text(label + ': ' + (value || '___________________________'), cx, cy, { width: cw });
     return doc.y + 4;
   }
 
-  y = drawFieldRow('Fecha', b.fecha, marginX, y, colW);
-  y = drawFieldRow('No. de diagnostico', b.numero, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Cliente', b.cliente, marginX, y, colW);
-  y = drawFieldRow('Telefono', b.telefono, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Vehiculo', b.vehiculo, marginX, y, colW);
-  y = drawFieldRow('Placa', b.placa, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Marca / Modelo / Ano', b.marcaModeloAnio, marginX, y, colW);
-  y = drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, y - doc.fontSize, colW);
-  y += 8;
+  let rowY = y;
+  y = drawFieldRow('Fecha', b.fecha, marginX, rowY, colW);
+  drawFieldRow('No. de diagnostico', b.numero, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Cliente', b.cliente, marginX, rowY, colW);
+  drawFieldRow('Telefono', b.telefono, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Vehiculo', b.vehiculo, marginX, rowY, colW);
+  drawFieldRow('Placa', b.placa, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Marca / Modelo / Ano', b.marcaModeloAnio, marginX, rowY, colW);
+  drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 8;
 
   // ----- 1. Motivo de ingreso -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }

@@ -12,9 +12,7 @@
   <div class="topbar">
     <div class="brand">TALLER PACHECO</div>
     <div class="actions">
-      <span id="user-email"></span>
-      <button class="btn btn-link" id="btn-change-password">Cambiar contraseña</button>
-      <button class="btn btn-secondary" id="btn-logout">Cerrar sesión</button>
+      <span class="tagline">Generador de cotizaciones, facturas y diagnósticos</span>
     </div>
   </div>
 
@@ -75,9 +73,7 @@
 
       <div class="card">
         <h2>Trabajo y materiales</h2>
-        <!-- Mobile: tarjetas apiladas -->
         <div class="items-cards" id="items-cards"></div>
-        <!-- Desktop: tabla -->
         <div class="items-table-wrap">
           <table class="items">
             <thead>
@@ -310,28 +306,6 @@
       </div>
     </div>
 
-  </div>
-
-  <!-- Modal cambiar contraseña -->
-  <div class="modal-backdrop hidden" id="password-modal">
-    <div class="modal">
-      <h3>Cambiar contraseña</h3>
-      <form id="password-form">
-        <div class="field">
-          <label for="current-password">Contraseña actual</label>
-          <input type="password" id="current-password" required />
-        </div>
-        <div class="field">
-          <label for="new-password">Nueva contraseña</label>
-          <input type="password" id="new-password" required minlength="6" />
-        </div>
-        <p class="message error" id="password-message"></p>
-        <div class="actions-row">
-          <button type="button" class="btn btn-secondary" id="btn-cancel-password">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <!-- Modal firmas -->

@@ -18,7 +18,6 @@ let rowIndex = 0;
 function addRow(values = {}) {
   const idx = rowIndex++;
 
-  // Desktop: fila en tabla
   const row = document.createElement('tr');
   row.innerHTML = `
     <td><input type="text" class="f-descripcion" value="${values.descripcion || ''}" /></td>
@@ -47,7 +46,6 @@ function addRow(values = {}) {
   });
   itemsBody.appendChild(row);
 
-  // Mobile: tarjeta apilada
   const card = document.createElement('div');
   card.className = 'item-card';
   card.dataset.idx = idx;
@@ -102,8 +100,7 @@ function removeItemCard(idx) {
 }
 
 function removeTableRow(idx) {
-  const rows = itemsBody.querySelectorAll('tr');
-  rows.forEach((row) => {
+  itemsBody.querySelectorAll('tr').forEach((row) => {
     const totalInput = row.querySelector('.f-total');
     if (totalInput && totalInput.dataset.idx === String(idx)) {
       row.remove();
@@ -120,8 +117,7 @@ function syncCardField(idx, field, value) {
 }
 
 function syncTableRow(idx, field, value) {
-  const rows = itemsBody.querySelectorAll('tr');
-  rows.forEach((row) => {
+  itemsBody.querySelectorAll('tr').forEach((row) => {
     const totalInput = row.querySelector('.f-total');
     if (totalInput && totalInput.dataset.idx === String(idx)) {
       const input = row.querySelector(`.f-${field}`);
@@ -132,7 +128,6 @@ function syncTableRow(idx, field, value) {
 
 function recalcTotals() {
   let subtotal = 0;
-  // Use cards on mobile, table on desktop
   const activeContainer = window.innerWidth <= 640 ? itemsCards : itemsBody;
   activeContainer.querySelectorAll('.f-total').forEach((input) => {
     subtotal += Number(input.value) || 0;
@@ -243,7 +238,6 @@ function addHallazgo(values = {}) {
 
 document.getElementById('btn-add-hallazgo').addEventListener('click', () => addHallazgo());
 
-// Checkbox "Otro"
 document.getElementById('proc-otro-check').addEventListener('change', (e) => {
   document.getElementById('proc-otro-field').style.display = e.target.checked ? 'block' : 'none';
 });
@@ -319,28 +313,6 @@ function setTipo(tipo) {
 
 tipoBtns.forEach((btn) => {
   btn.addEventListener('click', () => setTipo(btn.dataset.tipo));
-});
-
-/* ===========================
-   CARGAR USUARIO
-   =========================== */
-async function loadUser() {
-  try {
-    const response = await fetch('/api/auth/me');
-    if (!response.ok) {
-      window.location.href = '/login.html';
-      return;
-    }
-    const data = await response.json();
-    document.getElementById('user-email').textContent = data.email;
-  } catch (err) {
-    window.location.href = '/login.html';
-  }
-}
-
-document.getElementById('btn-logout').addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/login.html';
 });
 
 /* ===========================
@@ -454,49 +426,6 @@ document.getElementById('btn-generate-diag').addEventListener('click', async () 
 });
 
 /* ===========================
-   CAMBIAR CONTRASEÑA
-   =========================== */
-const passwordModal = document.getElementById('password-modal');
-
-document.getElementById('btn-change-password').addEventListener('click', () => {
-  document.getElementById('password-message').textContent = '';
-  document.getElementById('current-password').value = '';
-  document.getElementById('new-password').value = '';
-  passwordModal.classList.remove('hidden');
-});
-
-document.getElementById('btn-cancel-password').addEventListener('click', () => {
-  passwordModal.classList.add('hidden');
-});
-
-document.getElementById('password-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const messageEl = document.getElementById('password-message');
-  messageEl.textContent = '';
-
-  const currentPassword = document.getElementById('current-password').value;
-  const newPassword = document.getElementById('new-password').value;
-
-  try {
-    const response = await fetch('/api/auth/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      messageEl.textContent = data.error || 'No se pudo cambiar la contraseña';
-      return;
-    }
-
-    passwordModal.classList.add('hidden');
-  } catch (err) {
-    messageEl.textContent = 'Error de conexión con el servidor';
-  }
-});
-
-/* ===========================
    FIRMAS
    =========================== */
 const signatures = { cliente: null, taller: null, tecnico: null, recibido: null };
@@ -563,7 +492,6 @@ function updateSignaturePreview(target) {
   }
 }
 
-// Firmas cotización/factura
 document.querySelectorAll('.btn-firmar').forEach((button) => {
   button.addEventListener('click', () => {
     currentSignatureTarget = button.dataset.target;
@@ -575,7 +503,6 @@ document.querySelectorAll('.btn-firmar').forEach((button) => {
   });
 });
 
-// Firmas carta diagnóstico
 document.querySelectorAll('.btn-firmar-diag').forEach((button) => {
   button.addEventListener('click', () => {
     currentSignatureTarget = button.dataset.target;
@@ -608,6 +535,5 @@ document.getElementById('btn-save-signature').addEventListener('click', () => {
 /* ===========================
    INIT
    =========================== */
-loadUser();
 initForm();
 initDiagnosticoForm();

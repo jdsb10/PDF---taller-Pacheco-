@@ -297,23 +297,32 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
 
   // ----- Datos generales -----
   const colW = pageWidth / 2;
-  const fieldH = 18;
 
   function drawFieldRow(label, value, cx, cy, cw) {
-    doc.font('Helvetica-Bold').fontSize(9).text(label + ': ', cx, cy, { continued: true, width: cw });
-    doc.font('Helvetica').text(value || '___________________________');
+    doc.font('Helvetica-Bold').fontSize(9)
+      .text(label + ': ' + (value || '___________________________'), cx, cy, { width: cw });
     return doc.y + 4;
   }
 
-  y = drawFieldRow('Fecha', b.fecha, marginX, y, colW);
-  y = drawFieldRow('No. de diagnóstico', b.numero, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Cliente', b.cliente, marginX, y, colW);
-  y = drawFieldRow('Teléfono', b.telefono, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Vehículo', b.vehiculo, marginX, y, colW);
-  y = drawFieldRow('Placa', b.placa, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Marca / Modelo / Año', b.marcaModeloAnio, marginX, y, colW);
-  y = drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, y - doc.fontSize, colW);
-  y += 8;
+  let rowY = y;
+  y = drawFieldRow('Fecha', b.fecha, marginX, rowY, colW);
+  drawFieldRow('No. de diagnóstico', b.numero, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Cliente', b.cliente, marginX, rowY, colW);
+  drawFieldRow('Teléfono', b.telefono, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Vehículo', b.vehiculo, marginX, rowY, colW);
+  drawFieldRow('Placa', b.placa, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 4;
+
+  rowY = y;
+  y = drawFieldRow('Marca / Modelo / Año', b.marcaModeloAnio, marginX, rowY, colW);
+  drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, rowY, colW);
+  y = Math.max(y, doc.y) + 8;
 
   // ----- 1. Motivo de ingreso -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
