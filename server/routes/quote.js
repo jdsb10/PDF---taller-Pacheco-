@@ -261,8 +261,12 @@ function drawCheckboxLine(doc, x, y, text, checked, width) {
   }
   doc.strokeColor('#000').lineWidth(0.75).rect(x, y, boxSize, boxSize).stroke();
   if (checked) {
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9)
-      .text('X', x, y - 1, { width: boxSize, align: 'center' });
+    // Marca en forma de "X" dibujada con lineas (no texto), para que quede
+    // siempre dentro del cuadro sin importar la fuente.
+    const pad = 2.5;
+    doc.strokeColor('#000').lineWidth(1.1);
+    doc.moveTo(x + pad, y + pad).lineTo(x + boxSize - pad, y + boxSize - pad).stroke();
+    doc.moveTo(x + boxSize - pad, y + pad).lineTo(x + pad, y + boxSize - pad).stroke();
   }
   doc.fillColor('#000').font('Helvetica').fontSize(9)
     .text(text, x + boxSize + 6, y + 1, { width: width || 400 });
