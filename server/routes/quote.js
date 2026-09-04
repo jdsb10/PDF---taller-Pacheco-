@@ -458,14 +458,25 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   doc.font('Helvetica').fontSize(9)
     .text('Firma de recibido:', marginX + pageWidth - sigWidth, sig2Y, { width: sigWidth, align: 'center' });
 
-  // Firmas dibujadas justo encima de su propia línea, en la columna derecha
-  // (que es donde están las etiquetas "Firma del técnico" / "Firma de recibido")
+  // Firmas centradas en su columna, apoyadas justo encima de su propia
+  // línea (columna derecha, donde están las etiquetas "Firma del técnico" /
+  // "Firma de recibido").
   const sigImgX = marginX + pageWidth - sigWidth;
+  const sigImgW = sigWidth - 30;
+  const sigImgH = 26;
   if (tecnicoSig) {
-    doc.image(tecnicoSig, sigImgX + 10, sigY + 12, { fit: [sigWidth - 20, 26] });
+    doc.image(tecnicoSig, sigImgX + (sigWidth - sigImgW) / 2, sigY + 10, {
+      fit: [sigImgW, sigImgH],
+      align: 'center',
+      valign: 'bottom',
+    });
   }
   if (recibidoSig) {
-    doc.image(recibidoSig, sigImgX + 10, sig2Y + 12, { fit: [sigWidth - 20, 26] });
+    doc.image(recibidoSig, sigImgX + (sigWidth - sigImgW) / 2, sig2Y + 10, {
+      fit: [sigImgW, sigImgH],
+      align: 'center',
+      valign: 'bottom',
+    });
   }
 
   // Líneas de firma
