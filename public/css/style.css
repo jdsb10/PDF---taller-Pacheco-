@@ -77,6 +77,11 @@ body {
   color: #ddd;
 }
 
+.topbar .tagline {
+  font-size: 11px;
+  color: #aaa;
+}
+
 /* ----- Layout general ----- */
 .container {
   max-width: 600px;
