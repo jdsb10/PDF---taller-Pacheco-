@@ -253,11 +253,19 @@ function drawSectionHeader(doc, x, y, width, text) {
   return y + height + 6;
 }
 
-function drawCheckboxLine(doc, x, y, text) {
+function drawCheckboxLine(doc, x, y, text, checked, width) {
   const boxSize = 10;
   doc.save();
+  if (checked) {
+    doc.fillColor(YELLOW).rect(x, y, boxSize, boxSize).fill();
+  }
   doc.strokeColor('#000').lineWidth(0.75).rect(x, y, boxSize, boxSize).stroke();
-  doc.fillColor('#000').font('Helvetica').fontSize(9).text(text, x + boxSize + 6, y + 1, { width: 400 });
+  if (checked) {
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9)
+      .text('X', x, y - 1, { width: boxSize, align: 'center' });
+  }
+  doc.fillColor('#000').font('Helvetica').fontSize(9)
+    .text(text, x + boxSize + 6, y + 1, { width: width || 400 });
   doc.restore();
   return doc.y + 4;
 }
@@ -348,20 +356,19 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   procLabels.forEach((label) => {
     if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
     const checked = procedimientos.includes(label);
-    if (checked) {
-      doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
-    }
-    y = drawCheckboxLine(doc, marginX + (checked ? 14 : 0), y, label);
+    y = drawCheckboxLine(doc, marginX, y, label, checked, pageWidth - 16);
   });
   // "Otro"
   const otroProc = procedimientos.find((p) => p.startsWith('Otro:'));
   if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
-  if (otroProc) {
-    doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
-  }
-  y = drawCheckboxLine(doc, marginX + (otroProc ? 14 : 0), y, `Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`);
+  y = drawCheckboxLine(
+    doc,
+    marginX,
+    y,
+    `Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`,
+    !!otroProc,
+    pageWidth - 16
+  );
   y += 10;
 
   // ----- 3. Hallazgos y fallas -----

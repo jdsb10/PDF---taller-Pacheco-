@@ -254,6 +254,23 @@ function drawSectionHeader(doc, x, y, width, text) {
   return y + height + 6;
 }
 
+function drawCheckboxLine(doc, x, y, text, checked, width) {
+  const boxSize = 10;
+  doc.save();
+  if (checked) {
+    doc.fillColor(YELLOW).rect(x, y, boxSize, boxSize).fill();
+  }
+  doc.strokeColor('#000').lineWidth(0.75).rect(x, y, boxSize, boxSize).stroke();
+  if (checked) {
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9)
+      .text('X', x, y - 1, { width: boxSize, align: 'center' });
+  }
+  doc.fillColor('#000').font('Helvetica').fontSize(9)
+    .text(text, x + boxSize + 6, y + 1, { width: width || 400 });
+  doc.restore();
+  return doc.y + 4;
+}
+
 app.post('/api/quote/generate-diagnostic-pdf', (req, res) => {
   const b = req.body || {};
   const hallazgos = Array.isArray(b.hallazgos) ? b.hallazgos : [];
@@ -340,23 +357,19 @@ app.post('/api/quote/generate-diagnostic-pdf', (req, res) => {
   procLabels.forEach((label) => {
     if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
     const checked = procedimientos.includes(label);
-    if (checked) {
-      doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
-    }
-    const bx = checked ? marginX + 14 : marginX;
-    doc.font('Helvetica').fontSize(9).fillColor('#000').text(label, bx, y, { width: pageWidth - 14 });
-    y = doc.y + 4;
+    y = drawCheckboxLine(doc, marginX, y, label, checked, pageWidth - 16);
   });
   const otroProc = procedimientos.find((p) => p.startsWith('Otro:'));
   if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
-  if (otroProc) {
-    doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
-  }
-  const bxOtro = otroProc ? marginX + 14 : marginX;
-  doc.font('Helvetica').fontSize(9).fillColor('#000').text(`Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`, bxOtro, y, { width: pageWidth - 14 });
-  y = doc.y + 10;
+  y = drawCheckboxLine(
+    doc,
+    marginX,
+    y,
+    `Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`,
+    !!otroProc,
+    pageWidth - 16
+  );
+  y += 10;
 
   // ----- 3. Hallazgos y fallas -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
