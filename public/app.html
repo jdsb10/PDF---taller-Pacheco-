@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>Taller Pacheco - Cotizaciones y Facturas</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
@@ -17,124 +19,300 @@
   </div>
 
   <div class="container">
+
+    <!-- selector tipo documento -->
     <div class="card">
-      <h2>Datos del documento</h2>
-      <div class="field field-narrow">
-        <label for="tipoDocumento">Tipo de documento</label>
-        <select id="tipoDocumento">
-          <option value="cotizacion">Cotización</option>
-          <option value="factura">Factura</option>
-        </select>
+      <h2>Tipo de documento</h2>
+      <div class="tipo-selector">
+        <button type="button" class="tipo-btn active" data-tipo="cotizacion">Cotización</button>
+        <button type="button" class="tipo-btn" data-tipo="factura">Factura</button>
+        <button type="button" class="tipo-btn" data-tipo="diagnostico">Carta Diagnóstico</button>
       </div>
-      <div class="grid">
+    </div>
+
+    <!-- ========== COTIZACIÓN / FACTURA ========== -->
+    <div class="section-cotizacion active" id="section-cotizacion">
+
+      <div class="card">
+        <h2>Datos del documento</h2>
         <div class="field">
           <label for="cotizacionNo" id="label-numero">Cotización No</label>
           <input type="text" id="cotizacionNo" />
         </div>
-        <div class="field">
-          <label for="fecha">Fecha</label>
-          <input type="date" id="fecha" />
+        <div class="grid">
+          <div class="field">
+            <label for="fecha">Fecha</label>
+            <input type="date" id="fecha" />
+          </div>
+          <div class="field">
+            <label for="cliente">Cliente</label>
+            <input type="text" id="cliente" placeholder="Nombre del cliente" />
+          </div>
+          <div class="field">
+            <label for="vigencia" id="label-vigencia">Vigencia de la oferta</label>
+            <input type="date" id="vigencia" />
+          </div>
         </div>
-        <div class="field">
-          <label for="cliente">Cliente</label>
-          <input type="text" id="cliente" placeholder="Nombre del cliente" />
+      </div>
+
+      <div class="card">
+        <h2>Datos del vehículo</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="vehiculoMarca">Marca</label>
+            <input type="text" id="vehiculoMarca" placeholder="Ej. Toyota" />
+          </div>
+          <div class="field">
+            <label for="vehiculoAnio">Año</label>
+            <input type="text" id="vehiculoAnio" placeholder="Ej. 2020" />
+          </div>
+          <div class="field">
+            <label for="placa">Placa</label>
+            <input type="text" id="placa" placeholder="Ej. ABC123" />
+          </div>
         </div>
-        <div class="field">
-          <label for="vigencia" id="label-vigencia">Vigencia de la oferta</label>
-          <input type="date" id="vigencia" />
+      </div>
+
+      <div class="card">
+        <h2>Trabajo y materiales</h2>
+        <!-- Mobile: tarjetas apiladas -->
+        <div class="items-cards" id="items-cards"></div>
+        <!-- Desktop: tabla -->
+        <div class="items-table-wrap">
+          <table class="items">
+            <thead>
+              <tr>
+                <th>Descripción de trabajo/mano de obra</th>
+                <th>Materiales/Repuestos (si aplica)</th>
+                <th>Tiempo estimado (días/horas)</th>
+                <th>Valor estimado</th>
+                <th>Total</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
         </div>
+        <button class="btn btn-secondary btn-full" id="btn-add-row">+ Agregar fila</button>
+      </div>
+
+      <div class="card">
+        <h2>Totales</h2>
+        <div class="totals">
+          <div class="line">
+            <span>SUBTOTAL</span>
+            <span id="subtotal-display">$ 0</span>
+          </div>
+          <div class="line">
+            <span>IVA (19%)</span>
+            <span id="iva-display">$ 0</span>
+          </div>
+          <div class="line">
+            <span>DESCUENTOS</span>
+            <input type="number" id="descuentos" value="0" min="0" />
+          </div>
+          <div class="line total">
+            <span>TOTAL ESTIMADO A PAGAR</span>
+            <span id="total-display">$ 0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Notas y términos</h2>
+        <div class="field">
+          <textarea id="notas" rows="4"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Firmas</h2>
+        <div class="signature-row">
+          <div class="signature-info">
+            <strong>Aceptación del Cliente</strong>
+            <div class="signature-preview" id="preview-cliente">Sin firmar</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-firmar" data-target="cliente">Firmar</button>
+        </div>
+        <div class="signature-row">
+          <div class="signature-info">
+            <strong>Firma de Taller Pacheco</strong>
+            <div class="signature-preview" id="preview-taller">Sin firmar</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-firmar" data-target="taller">Firmar</button>
+        </div>
+      </div>
+
+      <div class="generate-bar">
+        <button class="btn btn-primary" id="btn-generate">Generar PDF</button>
+        <p class="message" id="generate-message"></p>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Datos del vehículo</h2>
-      <div class="grid">
+    <!-- ========== CARTA DIAGNÓSTICO ========== -->
+    <div class="section-diagnostico" id="section-diagnostico">
+
+      <div class="card">
+        <h2>Datos del diagnóstico</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="diag-fecha">Fecha</label>
+            <input type="date" id="diag-fecha" />
+          </div>
+          <div class="field">
+            <label for="diag-numero">No. de diagnóstico</label>
+            <input type="text" id="diag-numero" placeholder="Ej. DIAG-20260904" />
+          </div>
+          <div class="field">
+            <label for="diag-cliente">Cliente</label>
+            <input type="text" id="diag-cliente" placeholder="Nombre del cliente" />
+          </div>
+          <div class="field">
+            <label for="diag-telefono">Teléfono</label>
+            <input type="tel" id="diag-telefono" placeholder="Ej. 300 123 4567" />
+          </div>
+          <div class="field">
+            <label for="diag-vehiculo">Vehículo</label>
+            <input type="text" id="diag-vehiculo" placeholder="Ej. Camioneta" />
+          </div>
+          <div class="field">
+            <label for="diag-placa">Placa</label>
+            <input type="text" id="diag-placa" placeholder="Ej. ABC123" />
+          </div>
+          <div class="field">
+            <label for="diag-marca-modelo">Marca / Modelo / Año</label>
+            <input type="text" id="diag-marca-modelo" placeholder="Ej. Toyota Hilux 2022" />
+          </div>
+          <div class="field">
+            <label for="diag-kilometraje">Kilometraje</label>
+            <input type="text" id="diag-kilometraje" placeholder="Ej. 85.000 km" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>1. Motivo de ingreso / Síntoma reportado</h2>
+        <p style="font-size:13px;color:#666;margin:0 0 8px;">Describa de forma clara la falla o síntoma informado por el cliente:</p>
         <div class="field">
-          <label for="vehiculoMarca">Marca</label>
-          <input type="text" id="vehiculoMarca" placeholder="Ej. Toyota" />
+          <textarea id="diag-motivo" rows="5" placeholder="Describa el síntoma..."></textarea>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>2. Procedimiento de diagnóstico realizado</h2>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-inspeccion" />
+            <label for="proc-inspeccion">Inspección visual y revisión general</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-escaneo" />
+            <label for="proc-escaneo">Escaneo electrónico / lectura de códigos de falla</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-sensores" />
+            <label for="proc-sensores">Pruebas de sensores y actuadores</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-electricas" />
+            <label for="proc-electricas">Pruebas eléctricas: alimentación, tierras, continuidad y señales</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-mecanicas" />
+            <label for="proc-mecanicas">Pruebas mecánicas / funcionamiento del sistema</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-carretera" />
+            <label for="proc-carretera">Prueba de carretera / prueba de funcionamiento</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="proc-otro-check" />
+            <label for="proc-otro-check">Otro:</label>
+          </div>
+        </div>
+        <div class="field" id="proc-otro-field" style="display:none;">
+          <input type="text" id="proc-otro-text" placeholder="Especifique el otro procedimiento" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3. Hallazgos y fallas encontradas</h2>
+        <div class="findings-table-wrap">
+          <table class="findings">
+            <thead>
+              <tr>
+                <th>Sistema / componente</th>
+                <th>Código / medición</th>
+                <th>Falla encontrada</th>
+                <th>Estado</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="hallazgos-body"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-secondary btn-full findings-add-row" id="btn-add-hallazgo">+ Agregar hallazgo</button>
+      </div>
+
+      <div class="card">
+        <h2>4. Explicación técnica del diagnóstico</h2>
+        <p style="font-size:13px;color:#666;margin:0 0 8px;">Explique qué se encontró, qué pruebas se realizaron, qué resultados se obtuvieron y cómo estos resultados se relacionan con la falla presentada por el vehículo.</p>
         <div class="field">
-          <label for="vehiculoAnio">Año</label>
-          <input type="text" id="vehiculoAnio" placeholder="Ej. 2020" />
+          <textarea id="diag-explicacion" rows="6" placeholder="Explique los hallazgos técnicos..."></textarea>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>5. Recomendación / Trabajo sugerido</h2>
         <div class="field">
-          <label for="placa">Placa</label>
-          <input type="text" id="placa" placeholder="Ej. ABC123" />
+          <textarea id="diag-recomendacion" rows="5" placeholder="Describa el trabajo recomendado..."></textarea>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>6. Observaciones y alcance del diagnóstico</h2>
+        <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.5;">
+          El diagnóstico corresponde a las pruebas efectuadas en el momento de la revisión. Cuando sea necesario desmontar componentes, realizar pruebas adicionales o efectuar una reparación, se informará al cliente antes de continuar. La sustitución de una pieza no se considerará necesaria únicamente por la presencia de un código de falla; debe confirmarse mediante las pruebas correspondientes.
+        </p>
+        <div class="grid">
+          <div class="field">
+            <label for="diag-realizado-por">Diagnóstico realizado por:</label>
+            <input type="text" id="diag-realizado-por" placeholder="Nombre del técnico" />
+          </div>
+          <div class="field">
+            <label for="diag-cliente-nombre">Cliente:</label>
+            <input type="text" id="diag-cliente-nombre" placeholder="Nombre del cliente" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Firmas</h2>
+        <div class="signature-row">
+          <div class="signature-info">
+            <strong>Firma del técnico</strong>
+            <div class="signature-preview" id="preview-tecnico">Sin firmar</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-firmar-diag" data-target="tecnico">Firmar</button>
+        </div>
+        <div class="signature-row">
+          <div class="signature-info">
+            <strong>Firma de recibido (Cliente)</strong>
+            <div class="signature-preview" id="preview-recibido">Sin firmar</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-firmar-diag" data-target="recibido">Firmar</button>
+        </div>
+      </div>
+
+      <div class="generate-bar">
+        <button class="btn btn-primary" id="btn-generate-diag">Generar PDF</button>
+        <p class="message" id="generate-message-diag"></p>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Trabajo y materiales</h2>
-      <table class="items">
-        <thead>
-          <tr>
-            <th>Descripción de trabajo/mano de obra</th>
-            <th>Materiales/Repuestos (si aplica)</th>
-            <th>Tiempo estimado (días/horas)</th>
-            <th>Valor estimado</th>
-            <th>Total</th>
-            <th class="col-actions"></th>
-          </tr>
-        </thead>
-        <tbody id="items-body"></tbody>
-      </table>
-      <button class="btn btn-secondary" id="btn-add-row">+ Agregar fila</button>
-    </div>
-
-    <div class="card">
-      <h2>Totales</h2>
-      <div class="totals">
-        <div class="line">
-          <span>SUBTOTAL</span>
-          <span id="subtotal-display">$ 0</span>
-        </div>
-        <div class="line">
-          <span>IVA (19%)</span>
-          <span id="iva-display">$ 0</span>
-        </div>
-        <div class="line">
-          <span>DESCUENTOS</span>
-          <input type="number" id="descuentos" value="0" min="0" />
-        </div>
-        <div class="line total">
-          <span>TOTAL ESTIMADO A PAGAR</span>
-          <span id="total-display">$ 0</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Notas y términos</h2>
-      <div class="field">
-        <textarea id="notas" rows="4"></textarea>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Firmas</h2>
-      <div class="signature-row">
-        <div class="signature-info">
-          <strong>Aceptación del Cliente</strong>
-          <div class="signature-preview" id="preview-cliente">Sin firmar</div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-firmar" data-target="cliente">Firmar</button>
-      </div>
-      <div class="signature-row">
-        <div class="signature-info">
-          <strong>Firma de Taller Pacheco</strong>
-          <div class="signature-preview" id="preview-taller">Sin firmar</div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-firmar" data-target="taller">Firmar</button>
-      </div>
-    </div>
-
-    <div class="generate-bar">
-      <button class="btn btn-primary" id="btn-generate">Generar PDF</button>
-      <p class="message" id="generate-message"></p>
-    </div>
   </div>
 
+  <!-- Modal cambiar contraseña -->
   <div class="modal-backdrop hidden" id="password-modal">
     <div class="modal">
       <h3>Cambiar contraseña</h3>
@@ -156,6 +334,7 @@
     </div>
   </div>
 
+  <!-- Modal firmas -->
   <div class="modal-backdrop hidden" id="signature-modal">
     <div class="modal signature-modal">
       <h3 id="signature-modal-title">Firmar</h3>

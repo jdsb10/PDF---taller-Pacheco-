@@ -241,4 +241,225 @@ router.post('/generate-pdf', (req, res) => {
   doc.end();
 });
 
+// ===================== CARTA DIAGNÓSTICO =====================
+
+function drawSectionHeader(doc, x, y, width, text) {
+  const height = 22;
+  doc.save();
+  doc.fillColor(YELLOW);
+  doc.roundedRect(x, y, width, height, 3).fill();
+  doc.restore();
+  doc.fillColor('#000').font('Helvetica-Bold').fontSize(10).text(text, x + 8, y + 6, { width: width - 16 });
+  return y + height + 6;
+}
+
+function drawCheckboxLine(doc, x, y, text) {
+  const boxSize = 10;
+  doc.save();
+  doc.strokeColor('#000').lineWidth(0.75).rect(x, y, boxSize, boxSize).stroke();
+  doc.fillColor('#000').font('Helvetica').fontSize(9).text(text, x + boxSize + 6, y + 1, { width: 400 });
+  doc.restore();
+  return doc.y + 4;
+}
+
+router.post('/generate-diagnostic-pdf', (req, res) => {
+  const b = req.body || {};
+  const hallazgos = Array.isArray(b.hallazgos) ? b.hallazgos : [];
+  const procedimientos = Array.isArray(b.procedimientos) ? b.procedimientos : [];
+
+  const doc = new PDFDocument({ size: 'letter', margin: 45 });
+
+  res.setHeader('Content-Type', 'application/pdf');
+  const safeNumber = (b.numero || 'sin-numero').toString().replace(/[^a-zA-Z0-9-_]/g, '');
+  res.setHeader('Content-Disposition', `attachment; filename="diagnostico-${safeNumber}.pdf"`);
+  doc.pipe(res);
+
+  const marginX = 45;
+  const pageWidth = doc.page.width - marginX * 2;
+  const pageBottom = doc.page.height - 50;
+  let y = 40;
+
+  // ----- Encabezado -----
+  if (fs.existsSync(LOGO_PATH)) {
+    doc.image(LOGO_PATH, marginX, y, { fit: [200, 75] });
+    y += 80;
+  } else {
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(22).text('TALLER PACHECO', marginX, y, { width: pageWidth, align: 'center' });
+    y = doc.y + 4;
+  }
+
+  doc.fillColor('#000').font('Helvetica-Bold').fontSize(11)
+    .text('DIAGNÓSTICO AUTOMOTRIZ Y SERVICIO TÉCNICO', marginX, y, { width: pageWidth, align: 'center' });
+  y = doc.y + 2;
+  doc.font('Helvetica-Oblique').fontSize(9)
+    .text('"La fuerza para tu vehículo, la confianza para ti."', marginX, y, { width: pageWidth, align: 'center' });
+  y = doc.y + 14;
+
+  // ----- Datos generales -----
+  const colW = pageWidth / 2;
+  const fieldH = 18;
+
+  function drawFieldRow(label, value, cx, cy, cw) {
+    doc.font('Helvetica-Bold').fontSize(9).text(label + ': ', cx, cy, { continued: true, width: cw });
+    doc.font('Helvetica').text(value || '___________________________');
+    return doc.y + 4;
+  }
+
+  y = drawFieldRow('Fecha', b.fecha, marginX, y, colW);
+  y = drawFieldRow('No. de diagnóstico', b.numero, marginX + colW, y - doc.fontSize, colW);
+  y = drawFieldRow('Cliente', b.cliente, marginX, y, colW);
+  y = drawFieldRow('Teléfono', b.telefono, marginX + colW, y - doc.fontSize, colW);
+  y = drawFieldRow('Vehículo', b.vehiculo, marginX, y, colW);
+  y = drawFieldRow('Placa', b.placa, marginX + colW, y - doc.fontSize, colW);
+  y = drawFieldRow('Marca / Modelo / Año', b.marcaModeloAnio, marginX, y, colW);
+  y = drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, y - doc.fontSize, colW);
+  y += 8;
+
+  // ----- 1. Motivo de ingreso -----
+  if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '1. MOTIVO DE INGRESO / SÍNTOMA REPORTADO');
+  doc.font('Helvetica').fontSize(8.5).fillColor('#555')
+    .text('Describa de forma clara la falla o síntoma informado por el cliente:', marginX, y, { width: pageWidth });
+  y = doc.y + 4;
+  doc.font('Helvetica').fontSize(9).fillColor('#000')
+    .text(b.motivo || '', marginX, y, { width: pageWidth });
+  y = doc.y + 12;
+
+  // ----- 2. Procedimiento de diagnóstico -----
+  if (y + 80 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '2. PROCEDIMIENTO DE DIAGNÓSTICO REALIZADO');
+  const procLabels = [
+    'Inspección visual y revisión general',
+    'Escaneo electrónico / lectura de códigos de falla',
+    'Pruebas de sensores y actuadores',
+    'Pruebas eléctricas: alimentación, tierras, continuidad y señales',
+    'Pruebas mecánicas / funcionamiento del sistema',
+    'Prueba de carretera / prueba de funcionamiento',
+  ];
+  procLabels.forEach((label) => {
+    if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
+    const checked = procedimientos.includes(label);
+    if (checked) {
+      doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
+    }
+    y = drawCheckboxLine(doc, marginX + (checked ? 14 : 0), y, label);
+  });
+  // "Otro"
+  const otroProc = procedimientos.find((p) => p.startsWith('Otro:'));
+  if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
+  if (otroProc) {
+    doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
+  }
+  y = drawCheckboxLine(doc, marginX + (otroProc ? 14 : 0), y, `Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`);
+  y += 10;
+
+  // ----- 3. Hallazgos y fallas -----
+  if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '3. HALLAZGOS Y FALLAS ENCONTRADAS');
+
+  const fColW = [
+    pageWidth * 0.25,
+    pageWidth * 0.22,
+    pageWidth * 0.33,
+    pageWidth * 0.20,
+  ];
+  // Adjust last column to fill remaining
+  fColW[2] = pageWidth - fColW[0] - fColW[1] - fColW[3];
+
+  const fHeaderH = 20;
+  drawRow(doc, marginX, y, fHeaderH, [
+    { text: 'Sistema / componente', width: fColW[0], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
+    { text: 'Código / medición', width: fColW[1], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
+    { text: 'Falla encontrada', width: fColW[2], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
+    { text: 'Estado', width: fColW[3], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
+  ]);
+  y += fHeaderH;
+
+  const fRowH = 22;
+  const rows = hallazgos.length > 0 ? hallazgos : [{}, {}, {}, {}];
+  rows.forEach((h) => {
+    if (y + fRowH > pageBottom) { doc.addPage(); y = 45; }
+    drawRow(doc, marginX, y, fRowH, [
+      { text: h.sistema || '', width: fColW[0] },
+      { text: h.codigo || '', width: fColW[1], align: 'center' },
+      { text: h.falla || '', width: fColW[2] },
+      { text: h.estado || 'Pendiente', width: fColW[3], align: 'center' },
+    ]);
+    y += fRowH;
+  });
+  y += 10;
+
+  // ----- 4. Explicación técnica -----
+  if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '4. EXPLICACIÓN TÉCNICA DEL DIAGNÓSTICO');
+  doc.font('Helvetica').fontSize(8.5).fillColor('#555')
+    .text('Explique qué se encontró, qué pruebas se realizaron, qué resultados se obtuvieron y cómo estos resultados se relacionan con la falla presentada por el vehículo.', marginX, y, { width: pageWidth });
+  y = doc.y + 4;
+  doc.font('Helvetica').fontSize(9).fillColor('#000')
+    .text(b.explicacion || '', marginX, y, { width: pageWidth });
+  y = doc.y + 12;
+
+  // ----- 5. Recomendación -----
+  if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '5. RECOMENDACIÓN / TRABAJO SUGERIDO');
+  doc.font('Helvetica').fontSize(9).fillColor('#000')
+    .text(b.recomendacion || '', marginX, y, { width: pageWidth });
+  y = doc.y + 12;
+
+  // ----- 6. Observaciones -----
+  if (y + 100 > pageBottom) { doc.addPage(); y = 45; }
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '6. OBSERVACIONES Y ALCANCE DEL DIAGNÓSTICO');
+  doc.font('Helvetica').fontSize(8).fillColor('#555')
+    .text(
+      'El diagnóstico corresponde a las pruebas efectuadas en el momento de la revisión. Cuando sea necesario desmontar componentes, realizar pruebas adicionales o efectuar una reparación, se informará al cliente antes de continuar. La sustitución de una pieza no se considerará necesaria únicamente por la presencia de un código de falla; debe confirmarse mediante las pruebas correspondientes.',
+      marginX, y, { width: pageWidth, lineGap: 2 }
+    );
+  y = doc.y + 14;
+
+  // Firmas
+  const sigY = y;
+  const sigWidth = pageWidth / 2 - 20;
+
+  const tecnicoSig = decodeSignature(b.firmaTecnico);
+  const recibidoSig = decodeSignature(b.firmaRecibido);
+
+  if (tecnicoSig) {
+    doc.image(tecnicoSig, marginX, sigY - 40, { fit: [sigWidth, 36] });
+  }
+  if (recibidoSig) {
+    doc.image(recibidoSig, marginX + pageWidth - sigWidth, sigY - 40, { fit: [sigWidth, 36] });
+  }
+
+  doc.fillColor('#000').font('Helvetica').fontSize(9)
+    .text('Diagnóstico realizado por:', marginX, sigY, { width: sigWidth });
+  doc.font('Helvetica-Bold').text(b.realizadoPor || '________________', marginX, doc.y + 2, { width: sigWidth });
+  doc.font('Helvetica').fontSize(9)
+    .text('Firma del técnico:', marginX + pageWidth - sigWidth, sigY, { width: sigWidth, align: 'center' });
+
+  const sig2Y = doc.y + 30;
+  doc.font('Helvetica').fontSize(9)
+    .text('Cliente:', marginX, sig2Y, { width: sigWidth });
+  doc.font('Helvetica-Bold').text(b.clienteNombre || '________________', marginX, doc.y + 2, { width: sigWidth });
+  doc.font('Helvetica').fontSize(9)
+    .text('Firma de recibido:', marginX + pageWidth - sigWidth, sig2Y, { width: sigWidth, align: 'center' });
+
+  // Líneas de firma
+  doc.moveTo(marginX, sigY + 40).lineTo(marginX + sigWidth, sigY + 40).stroke();
+  doc.moveTo(marginX + pageWidth - sigWidth, sigY + 40).lineTo(marginX + pageWidth, sigY + 40).stroke();
+  doc.moveTo(marginX, sig2Y + 40).lineTo(marginX + sigWidth, sig2Y + 40).stroke();
+  doc.moveTo(marginX + pageWidth - sigWidth, sig2Y + 40).lineTo(marginX + pageWidth, sig2Y + 40).stroke();
+
+  // Footer
+  const footerY = doc.page.height - 35;
+  doc.font('Helvetica').fontSize(7).fillColor('#888')
+    .text(
+      'Taller Pacheco · Mecánica · Electricidad · Electrónica · Aire acondicionado · Diagnóstico automotriz\nDocumento de diagnóstico técnico — conservar junto con la orden de servicio.',
+      marginX, footerY, { width: pageWidth, align: 'center', lineGap: 2 }
+    );
+
+  doc.end();
+});
+
 module.exports = router;
