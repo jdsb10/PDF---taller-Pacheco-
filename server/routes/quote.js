@@ -441,13 +441,6 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   const tecnicoSig = decodeSignature(b.firmaTecnico);
   const recibidoSig = decodeSignature(b.firmaRecibido);
 
-  if (tecnicoSig) {
-    doc.image(tecnicoSig, marginX, sigY - 40, { fit: [sigWidth, 36] });
-  }
-  if (recibidoSig) {
-    doc.image(recibidoSig, marginX + pageWidth - sigWidth, sigY - 40, { fit: [sigWidth, 36] });
-  }
-
   doc.fillColor('#000').font('Helvetica').fontSize(9)
     .text('Diagnóstico realizado por:', marginX, sigY, { width: sigWidth });
   doc.font('Helvetica-Bold').text(b.realizadoPor || '________________', marginX, doc.y + 2, { width: sigWidth });
@@ -460,6 +453,16 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   doc.font('Helvetica-Bold').text(b.clienteNombre || '________________', marginX, doc.y + 2, { width: sigWidth });
   doc.font('Helvetica').fontSize(9)
     .text('Firma de recibido:', marginX + pageWidth - sigWidth, sig2Y, { width: sigWidth, align: 'center' });
+
+  // Firmas dibujadas justo encima de su propia línea, en la columna derecha
+  // (que es donde están las etiquetas "Firma del técnico" / "Firma de recibido")
+  const sigImgX = marginX + pageWidth - sigWidth;
+  if (tecnicoSig) {
+    doc.image(tecnicoSig, sigImgX + 10, sigY + 12, { fit: [sigWidth - 20, 26] });
+  }
+  if (recibidoSig) {
+    doc.image(recibidoSig, sigImgX + 10, sig2Y + 12, { fit: [sigWidth - 20, 26] });
+  }
 
   // Líneas de firma
   doc.moveTo(marginX, sigY + 40).lineTo(marginX + sigWidth, sigY + 40).stroke();
