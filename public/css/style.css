@@ -14,27 +14,30 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   background: #f4f4f4;
   color: var(--black);
+  -webkit-text-size-adjust: 100%;
 }
 
 /* ----- Login ----- */
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
 }
 
 .login-card {
   background: #fff;
-  padding: 32px;
-  border-radius: 10px;
+  padding: 28px 20px;
+  border-radius: 12px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
   width: 100%;
   max-width: 360px;
 }
 
 .login-card h1 {
-  font-size: 22px;
+  font-size: 20px;
   margin: 0 0 4px;
   text-align: center;
 }
@@ -51,90 +54,146 @@ body {
   background: var(--black);
   color: #fff;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
+  flex-direction: column;
+  padding: 10px 14px;
+  gap: 8px;
 }
 
 .topbar .brand {
   font-weight: bold;
   color: var(--yellow);
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .topbar .actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .topbar .actions span {
-  font-size: 13px;
+  font-size: 12px;
   color: #ddd;
-  margin-right: 6px;
 }
 
 /* ----- Layout general ----- */
 .container {
-  max-width: 960px;
-  margin: 24px auto;
-  padding: 0 16px 60px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 12px 12px 60px;
 }
 
 .card {
   background: #fff;
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 16px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .card h2 {
   margin-top: 0;
-  font-size: 16px;
+  font-size: 15px;
   border-bottom: 2px solid var(--yellow);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .field {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .field label {
   display: block;
   font-size: 13px;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .field-narrow {
-  max-width: 220px;
+  max-width: 100%;
 }
 
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  padding: 9px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 16px;
   font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--yellow);
+  outline-offset: -1px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0 16px;
+  grid-template-columns: 1fr;
+  gap: 0 12px;
 }
 
-@media (max-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
+/* ----- Tabla de items (mobile: tarjetas apiladas) ----- */
+.items-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.item-card {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  position: relative;
+}
+
+.item-card .field {
+  margin-bottom: 8px;
+}
+
+.item-card .field:last-of-type {
+  margin-bottom: 0;
+}
+
+.item-card .row-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: #b00020;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+/* Desktop: tabla tradicional */
+@media (min-width: 641px) {
+  .items-cards {
+    display: none;
+  }
+
+  .items-table-wrap {
+    display: block;
   }
 }
 
-/* ----- Tabla de items ----- */
+@media (max-width: 640px) {
+  .items-table-wrap {
+    display: none;
+  }
+}
+
 table.items {
   width: 100%;
   border-collapse: collapse;
@@ -143,8 +202,8 @@ table.items {
 
 table.items th {
   background: var(--gray);
-  font-size: 12px;
-  padding: 8px 6px;
+  font-size: 11px;
+  padding: 8px 4px;
   border: 1px solid var(--border);
 }
 
@@ -157,7 +216,7 @@ table.items td input {
   border: none;
   width: 100%;
   padding: 6px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 table.items td input:focus {
@@ -169,7 +228,7 @@ table.items .col-actions {
   text-align: center;
 }
 
-.row-remove {
+.row-remove-table {
   background: none;
   border: none;
   color: #b00020;
@@ -179,14 +238,15 @@ table.items .col-actions {
 
 /* ----- Totales ----- */
 .totals {
-  max-width: 320px;
+  max-width: 100%;
   margin-left: auto;
 }
 
 .totals .line {
   display: flex;
   justify-content: space-between;
-  padding: 6px 10px;
+  align-items: center;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-top: none;
   font-size: 14px;
@@ -202,11 +262,12 @@ table.items .col-actions {
 }
 
 .totals .line input {
-  width: 120px;
+  width: 100px;
   text-align: right;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 3px 6px;
+  padding: 4px 6px;
+  font-size: 16px;
 }
 
 /* ----- Botones ----- */
@@ -214,10 +275,11 @@ button,
 .btn {
   cursor: pointer;
   border: none;
-  border-radius: 6px;
-  padding: 10px 16px;
-  font-size: 14px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 15px;
   font-weight: bold;
+  min-height: 44px;
 }
 
 .btn-primary {
@@ -225,7 +287,7 @@ button,
   color: var(--black);
 }
 
-.btn-primary:hover {
+.btn-primary:active {
   background: #d9ac00;
 }
 
@@ -234,7 +296,7 @@ button,
   color: var(--black);
 }
 
-.btn-secondary:hover {
+.btn-secondary:active {
   background: #ddd;
 }
 
@@ -243,6 +305,7 @@ button,
   color: var(--yellow);
   text-decoration: underline;
   padding: 0;
+  min-height: auto;
 }
 
 .btn-danger {
@@ -250,21 +313,27 @@ button,
   color: #fff;
 }
 
+.btn-full {
+  width: 100%;
+}
+
 .actions-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
+  gap: 8px;
 }
 
 .generate-bar {
   text-align: center;
-  margin: 20px 0 40px;
+  margin: 16px 0 40px;
 }
 
 .generate-bar button {
   font-size: 16px;
   padding: 14px 32px;
+  width: 100%;
 }
 
 /* ----- Mensajes ----- */
@@ -285,9 +354,9 @@ button,
 /* ----- Firmas ----- */
 .signature-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -298,14 +367,14 @@ button,
 .signature-info strong {
   display: block;
   font-size: 13px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .signature-preview {
-  width: 200px;
+  width: 100%;
   height: 60px;
   border: 1px dashed var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -321,13 +390,15 @@ button,
 }
 
 .signature-modal {
-  max-width: 480px;
+  max-width: 100%;
+  width: calc(100% - 32px);
 }
 
 #signature-canvas {
   width: 100%;
+  height: 180px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   background: #fff;
   touch-action: none;
   cursor: crosshair;
@@ -339,9 +410,10 @@ button,
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   z-index: 10;
+  padding: 0;
 }
 
 .modal-backdrop.hidden {
@@ -350,10 +422,12 @@ button,
 
 .modal {
   background: #fff;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px 12px 0 0;
+  padding: 20px;
   width: 100%;
-  max-width: 340px;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal h3 {
@@ -361,5 +435,173 @@ button,
 }
 
 .modal .actions-row {
-  margin-top: 18px;
+  margin-top: 16px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal .actions-row .btn {
+  width: 100%;
+}
+
+/* ----- Carta Diagnóstico: Checkboxes ----- */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  margin-top: 2px;
+  accent-color: var(--yellow);
+}
+
+.checkbox-item label {
+  font-weight: normal;
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+/* ----- Carta Diagnóstico: Tabla hallazgos mobile ----- */
+.findings-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+
+table.findings {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px;
+}
+
+table.findings th {
+  background: var(--black);
+  color: #fff;
+  font-size: 11px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+table.findings td {
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+
+table.findings td input,
+table.findings td select {
+  border: none;
+  width: 100%;
+  padding: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+table.findings td input:focus,
+table.findings td select:focus {
+  outline: 2px solid var(--yellow);
+}
+
+.findings-add-row {
+  margin-bottom: 12px;
+}
+
+/* ----- Secciones condicionales ----- */
+.section-cotizacion,
+.section-factura,
+.section-diagnostico {
+  display: none;
+}
+
+.section-cotizacion.active,
+.section-factura.active,
+.section-diagnostico.active {
+  display: block;
+}
+
+/* ----- Select tipo documento ----- */
+.tipo-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.tipo-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  font-size: 13px;
+  text-align: center;
+  background: #eee;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tipo-btn.active {
+  background: var(--yellow);
+  border-color: var(--black);
+  color: var(--black);
+}
+
+/* ----- Desktop overrides ----- */
+@media (min-width: 641px) {
+  .topbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .topbar .actions span {
+    margin-right: 6px;
+  }
+
+  .container {
+    padding: 24px 20px 60px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .signature-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .signature-preview {
+    width: 200px;
+  }
+
+  .modal {
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .modal .actions-row {
+    flex-direction: row;
+  }
+
+  .modal .actions-row .btn {
+    width: auto;
+  }
+
+  .generate-bar button {
+    width: auto;
+  }
 }

@@ -1,21 +1,119 @@
-const express = require('express');
 const path = require('path');
-const fs = require('fs');
+const crypto = require('crypto');
+const express = require('express');
+const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
+const fs = require('fs');
 
-const router = express.Router();
+const app = express();
 
-const BUSINESS = {
-  tipo: 'Persona Natural Responsable de IVA',
-  nit: 'NIT: 1047339039-5',
-  direccion: 'Dirección: Calle 12 #12-87, Santo Tomás, Atlántico',
-  whatsapp: 'WhatsApp: 300 537 2972',
-  correo: 'Correo: Janhcarlos89@gmail.com',
-};
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const DEFAULT_EMAIL = process.env.DEFAULT_EMAIL || 'jahn@taller.com';
+const DEFAULT_PASSWORD_HASH = process.env.DEFAULT_PASSWORD_HASH || bcrypt.hashSync('tallerpacheco+', 10);
 
-const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo.png');
+const LOGO_PATH = path.join(__dirname, '..', 'server', 'assets', 'logo.png');
 const YELLOW = '#f2c200';
 const GRAY = '#d9d9d9';
+
+function signCookie(value, secret) {
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(value);
+  return hmac.digest('hex');
+}
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach((c) => {
+    const [key, ...rest] = c.split('=');
+    cookies[key.trim()] = rest.join('=').trim();
+  });
+  return cookies;
+}
+
+function getSessionUser(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionCookie = cookies['taller_pacheco_sid'];
+  if (!sessionCookie) return null;
+  const [emailB64, signature] = sessionCookie.split('.');
+  if (!emailB64 || !signature) return null;
+  const expected = signCookie(emailB64, SESSION_SECRET);
+  if (signature !== expected) return null;
+  try {
+    return JSON.parse(Buffer.from(emailB64, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
+function setSessionCookie(res, email) {
+  const payload = Buffer.from(JSON.stringify({ email })).toString('base64');
+  const signature = signCookie(payload, SESSION_SECRET);
+  const cookie = `taller_pacheco_sid=${payload}.${signature}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${8 * 60 * 60}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', 'taller_pacheco_sid=; Path=/; HttpOnly; Max-Age=0');
+}
+
+function requireAuthPage(req, res, next) {
+  const user = getSessionUser(req);
+  if (user) return next();
+  return res.redirect('/login.html');
+}
+
+function requireAuthApi(req, res, next) {
+  const user = getSessionUser(req);
+  if (user) {
+    req.sessionUser = user;
+    return next();
+  }
+  return res.status(401).json({ error: 'No autenticado' });
+}
+
+app.use(express.json({ limit: '5mb' }));
+
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
+});
+
+app.get(['/', '/app.html'], requireAuthPage, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'app.html'));
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Falta email o contrasena' });
+  }
+  const emailMatch = email.trim().toLowerCase() === DEFAULT_EMAIL.toLowerCase();
+  const passwordMatch = emailMatch && bcrypt.compareSync(password, DEFAULT_PASSWORD_HASH);
+  if (!emailMatch || !passwordMatch) {
+    return res.status(401).json({ error: 'Email o contrasena incorrectos' });
+  }
+  setSessionCookie(res, DEFAULT_EMAIL);
+  res.json({ email: DEFAULT_EMAIL });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const user = getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'No autenticado' });
+  res.json({ email: user.email });
+});
+
+app.post('/api/auth/change-password', requireAuthApi, (req, res) => {
+  const { newPassword } = req.body || {};
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nueva contrasena debe tener al menos 6 caracteres' });
+  }
+  res.json({ ok: true, message: 'Contrasena actualizada (reinicia el servidor para aplicar en entorno local)' });
+});
 
 function money(n) {
   const value = Number(n) || 0;
@@ -35,7 +133,7 @@ function decodeSignature(dataUrl) {
   if (!match) return null;
   try {
     return Buffer.from(match[1], 'base64');
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -62,12 +160,20 @@ function drawRow(doc, x, y, height, cells) {
   });
 }
 
-router.post('/generate-pdf', (req, res) => {
+const BUSINESS = {
+  tipo: 'Persona Natural Responsable de IVA',
+  nit: 'NIT: 1047339039-5',
+  direccion: 'Direccion: Calle 12 #12-87, Santo Tomas, Atlantico',
+  whatsapp: 'WhatsApp: 300 537 2972',
+  correo: 'Correo: Janhcarlos89@gmail.com',
+};
+
+app.post('/api/quote/generate-pdf', requireAuthApi, (req, res) => {
   const body = req.body || {};
   const items = Array.isArray(body.items) ? body.items : [];
   const descuentos = Number(body.descuentos) || 0;
   const esFactura = body.tipoDocumento === 'factura';
-  const tituloDocumento = esFactura ? 'FACTURA' : 'COTIZACIÓN';
+  const tituloDocumento = esFactura ? 'FACTURA' : 'COTIZACION';
 
   const subtotal = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   const iva = subtotal * 0.19;
@@ -86,7 +192,6 @@ router.post('/generate-pdf', (req, res) => {
   const pageBottom = doc.page.height - 60;
   let y = 40;
 
-  // ----- Encabezado -----
   const leftColWidth = 300;
   const rightColX = marginX + leftColWidth + 20;
   const rightColWidth = pageWidth - leftColWidth - 20;
@@ -130,13 +235,12 @@ router.post('/generate-pdf', (req, res) => {
   rightLine(`${tituloDocumento} No:`, body.cotizacionNo);
   rightLine('FECHA:', formatFecha(body.fecha));
   rightLine('CLIENTE:', body.cliente);
-  if (vehiculo) rightLine('VEHÍCULO:', vehiculo);
+  if (vehiculo) rightLine('VEHICULO:', vehiculo);
   if (body.placa) rightLine('PLACA:', body.placa);
   rightLine(esFactura ? 'FECHA DE VENCIMIENTO:' : 'VIGENCIA DE LA OFERTA:', formatFecha(body.vigencia), true);
 
   y = Math.max(infoBottom, ry) + 20;
 
-  // ----- Tabla -----
   const colWidths = [
     pageWidth * 0.28,
     pageWidth * 0.28,
@@ -148,9 +252,9 @@ router.post('/generate-pdf', (req, res) => {
 
   const headerHeight = 34;
   drawRow(doc, marginX, y, headerHeight, [
-    { text: 'DESCRIPCIÓN DE TRABAJO/MANO DE OBRA', width: colWidths[0], bold: true, align: 'center', fill: GRAY },
+    { text: 'DESCRIPCION DE TRABAJO/MANO DE OBRA', width: colWidths[0], bold: true, align: 'center', fill: GRAY },
     { text: 'MATERIALES/REPUESTOS (Si aplica)', width: colWidths[1], bold: true, align: 'center', fill: GRAY },
-    { text: 'TIEMPO ESTIMADO (Días/Horas)', width: colWidths[2], bold: true, align: 'center', fill: GRAY },
+    { text: 'TIEMPO ESTIMADO (Dias/Horas)', width: colWidths[2], bold: true, align: 'center', fill: GRAY },
     { text: 'VALOR ESTIMADO', width: colWidths[3], bold: true, align: 'center', fill: GRAY },
     { text: 'TOTAL', width: colWidths[4], bold: true, align: 'center', fill: GRAY },
   ]);
@@ -173,7 +277,6 @@ router.post('/generate-pdf', (req, res) => {
     y += itemRowHeight;
   });
 
-  // ----- Totales (bajo las columnas Valor Estimado / Total) -----
   const totalsX = marginX + colWidths[0] + colWidths[1] + colWidths[2];
   const totalsLabelWidth = colWidths[3];
   const totalsValueWidth = colWidths[4];
@@ -200,22 +303,20 @@ router.post('/generate-pdf', (req, res) => {
 
   y += 25;
 
-  // ----- Notas y términos -----
   if (y + 80 > pageBottom) {
     doc.addPage();
     y = 40;
   }
-  doc.font('Helvetica-Bold').fontSize(11).text('NOTAS Y TÉRMINOS:', marginX, y, { width: pageWidth });
+  doc.font('Helvetica-Bold').fontSize(11).text('NOTAS Y TERMINOS:', marginX, y, { width: pageWidth });
   y = doc.y + 4;
   const notas =
     body.notas ||
-    `Términos de Pago: Validez de la ${esFactura ? 'Factura' : 'Cotización'}:\n` +
-      `Los repuestos adicionales no ${esFactura ? 'facturados' : 'cotizados'} se facturarán por separado.\n` +
-      'Se requiere una aprobación por escrito para iniciar el trabajo.';
+    `Terminos de Pago: Validez de la ${esFactura ? 'Factura' : 'Cotizacion'}:\n` +
+      `Los repuestos adicionales no ${esFactura ? 'facturados' : 'cotizados'} se facturaran por separado.\n` +
+      'Se requiere una aprobacion por escrito para iniciar el trabajo.';
   doc.font('Helvetica').fontSize(9.5).text(notas, marginX, y, { width: pageWidth });
   y = doc.y + 50;
 
-  // ----- Firmas -----
   if (y + 40 > pageBottom) {
     doc.addPage();
     y = 40;
@@ -234,14 +335,14 @@ router.post('/generate-pdf', (req, res) => {
   doc
     .font('Helvetica')
     .fontSize(9.5)
-    .text('Aceptación del Cliente (Firma)', marginX, y + 6, { width: sigWidth, align: 'center' });
+    .text('Aceptacion del Cliente (Firma)', marginX, y + 6, { width: sigWidth, align: 'center' });
   doc
     .text('Firma de Taller Pacheco', marginX + pageWidth - sigWidth, y + 6, { width: sigWidth, align: 'center' });
 
   doc.end();
 });
 
-// ===================== CARTA DIAGNÓSTICO =====================
+// ===================== CARTA DIAGNOSTICO =====================
 
 function drawSectionHeader(doc, x, y, width, text) {
   const height = 22;
@@ -253,16 +354,7 @@ function drawSectionHeader(doc, x, y, width, text) {
   return y + height + 6;
 }
 
-function drawCheckboxLine(doc, x, y, text) {
-  const boxSize = 10;
-  doc.save();
-  doc.strokeColor('#000').lineWidth(0.75).rect(x, y, boxSize, boxSize).stroke();
-  doc.fillColor('#000').font('Helvetica').fontSize(9).text(text, x + boxSize + 6, y + 1, { width: 400 });
-  doc.restore();
-  return doc.y + 4;
-}
-
-router.post('/generate-diagnostic-pdf', (req, res) => {
+app.post('/api/quote/generate-diagnostic-pdf', requireAuthApi, (req, res) => {
   const b = req.body || {};
   const hallazgos = Array.isArray(b.hallazgos) ? b.hallazgos : [];
   const procedimientos = Array.isArray(b.procedimientos) ? b.procedimientos : [];
@@ -289,15 +381,14 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   }
 
   doc.fillColor('#000').font('Helvetica-Bold').fontSize(11)
-    .text('DIAGNÓSTICO AUTOMOTRIZ Y SERVICIO TÉCNICO', marginX, y, { width: pageWidth, align: 'center' });
+    .text('DIAGNOSTICO AUTOMOTRIZ Y SERVICIO TECNICO', marginX, y, { width: pageWidth, align: 'center' });
   y = doc.y + 2;
   doc.font('Helvetica-Oblique').fontSize(9)
-    .text('"La fuerza para tu vehículo, la confianza para ti."', marginX, y, { width: pageWidth, align: 'center' });
+    .text('"La fuerza para tu vehiculo, la confianza para ti."', marginX, y, { width: pageWidth, align: 'center' });
   y = doc.y + 14;
 
   // ----- Datos generales -----
   const colW = pageWidth / 2;
-  const fieldH = 18;
 
   function drawFieldRow(label, value, cx, cy, cw) {
     doc.font('Helvetica-Bold').fontSize(9).text(label + ': ', cx, cy, { continued: true, width: cw });
@@ -306,34 +397,34 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   }
 
   y = drawFieldRow('Fecha', b.fecha, marginX, y, colW);
-  y = drawFieldRow('No. de diagnóstico', b.numero, marginX + colW, y - doc.fontSize, colW);
+  y = drawFieldRow('No. de diagnostico', b.numero, marginX + colW, y - doc.fontSize, colW);
   y = drawFieldRow('Cliente', b.cliente, marginX, y, colW);
-  y = drawFieldRow('Teléfono', b.telefono, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Vehículo', b.vehiculo, marginX, y, colW);
+  y = drawFieldRow('Telefono', b.telefono, marginX + colW, y - doc.fontSize, colW);
+  y = drawFieldRow('Vehiculo', b.vehiculo, marginX, y, colW);
   y = drawFieldRow('Placa', b.placa, marginX + colW, y - doc.fontSize, colW);
-  y = drawFieldRow('Marca / Modelo / Año', b.marcaModeloAnio, marginX, y, colW);
+  y = drawFieldRow('Marca / Modelo / Ano', b.marcaModeloAnio, marginX, y, colW);
   y = drawFieldRow('Kilometraje', b.kilometraje, marginX + colW, y - doc.fontSize, colW);
   y += 8;
 
   // ----- 1. Motivo de ingreso -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
-  y = drawSectionHeader(doc, marginX, y, pageWidth, '1. MOTIVO DE INGRESO / SÍNTOMA REPORTADO');
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '1. MOTIVO DE INGRESO / SINTOMA REPORTADO');
   doc.font('Helvetica').fontSize(8.5).fillColor('#555')
-    .text('Describa de forma clara la falla o síntoma informado por el cliente:', marginX, y, { width: pageWidth });
+    .text('Describa de forma clara la falla o sintoma informado por el cliente:', marginX, y, { width: pageWidth });
   y = doc.y + 4;
   doc.font('Helvetica').fontSize(9).fillColor('#000')
     .text(b.motivo || '', marginX, y, { width: pageWidth });
   y = doc.y + 12;
 
-  // ----- 2. Procedimiento de diagnóstico -----
+  // ----- 2. Procedimiento de diagnostico -----
   if (y + 80 > pageBottom) { doc.addPage(); y = 45; }
-  y = drawSectionHeader(doc, marginX, y, pageWidth, '2. PROCEDIMIENTO DE DIAGNÓSTICO REALIZADO');
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '2. PROCEDIMIENTO DE DIAGNOSTICO REALIZADO');
   const procLabels = [
-    'Inspección visual y revisión general',
-    'Escaneo electrónico / lectura de códigos de falla',
+    'Inspeccion visual y revision general',
+    'Escaneo electronico / lectura de codigos de falla',
     'Pruebas de sensores y actuadores',
-    'Pruebas eléctricas: alimentación, tierras, continuidad y señales',
-    'Pruebas mecánicas / funcionamiento del sistema',
+    'Pruebas electricas: alimentacion, tierras, continuidad y senales',
+    'Pruebas mecanicas / funcionamiento del sistema',
     'Prueba de carretera / prueba de funcionamiento',
   ];
   procLabels.forEach((label) => {
@@ -343,17 +434,19 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
       doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
       doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
     }
-    y = drawCheckboxLine(doc, marginX + (checked ? 14 : 0), y, label);
+    const bx = checked ? marginX + 14 : marginX;
+    doc.font('Helvetica').fontSize(9).fillColor('#000').text(label, bx, y, { width: pageWidth - 14 });
+    y = doc.y + 4;
   });
-  // "Otro"
   const otroProc = procedimientos.find((p) => p.startsWith('Otro:'));
   if (y + 14 > pageBottom) { doc.addPage(); y = 45; }
   if (otroProc) {
     doc.save().fillColor(YELLOW).rect(marginX + 2, y + 1, 8, 8).fill().restore();
     doc.fillColor('#000').font('Helvetica-Bold').fontSize(9).text('✓', marginX + 3, y, { continued: false });
   }
-  y = drawCheckboxLine(doc, marginX + (otroProc ? 14 : 0), y, `Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`);
-  y += 10;
+  const bxOtro = otroProc ? marginX + 14 : marginX;
+  doc.font('Helvetica').fontSize(9).fillColor('#000').text(`Otro: ${otroProc ? otroProc.replace('Otro: ', '') : ''}`, bxOtro, y, { width: pageWidth - 14 });
+  y = doc.y + 10;
 
   // ----- 3. Hallazgos y fallas -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
@@ -365,13 +458,12 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
     pageWidth * 0.33,
     pageWidth * 0.20,
   ];
-  // Adjust last column to fill remaining
   fColW[2] = pageWidth - fColW[0] - fColW[1] - fColW[3];
 
   const fHeaderH = 20;
   drawRow(doc, marginX, y, fHeaderH, [
     { text: 'Sistema / componente', width: fColW[0], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
-    { text: 'Código / medición', width: fColW[1], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
+    { text: 'Codigo / medicion', width: fColW[1], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
     { text: 'Falla encontrada', width: fColW[2], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
     { text: 'Estado', width: fColW[3], bold: true, align: 'center', fill: '#1a1a1a', fontSize: 8 },
   ]);
@@ -391,29 +483,29 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   });
   y += 10;
 
-  // ----- 4. Explicación técnica -----
+  // ----- 4. Explicacion tecnica -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
-  y = drawSectionHeader(doc, marginX, y, pageWidth, '4. EXPLICACIÓN TÉCNICA DEL DIAGNÓSTICO');
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '4. EXPLICACION TECNICA DEL DIAGNOSTICO');
   doc.font('Helvetica').fontSize(8.5).fillColor('#555')
-    .text('Explique qué se encontró, qué pruebas se realizaron, qué resultados se obtuvieron y cómo estos resultados se relacionan con la falla presentada por el vehículo.', marginX, y, { width: pageWidth });
+    .text('Explique que se encontro, que pruebas se realizaron, que resultados se obtuvieron y como estos resultados se relacionan con la falla presentada por el vehiculo.', marginX, y, { width: pageWidth });
   y = doc.y + 4;
   doc.font('Helvetica').fontSize(9).fillColor('#000')
     .text(b.explicacion || '', marginX, y, { width: pageWidth });
   y = doc.y + 12;
 
-  // ----- 5. Recomendación -----
+  // ----- 5. Recomendacion -----
   if (y + 60 > pageBottom) { doc.addPage(); y = 45; }
-  y = drawSectionHeader(doc, marginX, y, pageWidth, '5. RECOMENDACIÓN / TRABAJO SUGERIDO');
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '5. RECOMENDACION / TRABAJO SUGERIDO');
   doc.font('Helvetica').fontSize(9).fillColor('#000')
     .text(b.recomendacion || '', marginX, y, { width: pageWidth });
   y = doc.y + 12;
 
   // ----- 6. Observaciones -----
   if (y + 100 > pageBottom) { doc.addPage(); y = 45; }
-  y = drawSectionHeader(doc, marginX, y, pageWidth, '6. OBSERVACIONES Y ALCANCE DEL DIAGNÓSTICO');
+  y = drawSectionHeader(doc, marginX, y, pageWidth, '6. OBSERVACIONES Y ALCANCE DEL DIAGNOSTICO');
   doc.font('Helvetica').fontSize(8).fillColor('#555')
     .text(
-      'El diagnóstico corresponde a las pruebas efectuadas en el momento de la revisión. Cuando sea necesario desmontar componentes, realizar pruebas adicionales o efectuar una reparación, se informará al cliente antes de continuar. La sustitución de una pieza no se considerará necesaria únicamente por la presencia de un código de falla; debe confirmarse mediante las pruebas correspondientes.',
+      'El diagnostico corresponde a las pruebas efectuadas en el momento de la revision. Cuando sea necesario desmontar componentes, realizar pruebas adicionales o efectuar una reparacion, se informara al cliente antes de continuar. La sustitucion de una pieza no se considerara necesaria unicamente por la presencia de un codigo de falla; debe confirmarse mediante las pruebas correspondientes.',
       marginX, y, { width: pageWidth, lineGap: 2 }
     );
   y = doc.y + 14;
@@ -433,10 +525,10 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   }
 
   doc.fillColor('#000').font('Helvetica').fontSize(9)
-    .text('Diagnóstico realizado por:', marginX, sigY, { width: sigWidth });
+    .text('Diagnostico realizado por:', marginX, sigY, { width: sigWidth });
   doc.font('Helvetica-Bold').text(b.realizadoPor || '________________', marginX, doc.y + 2, { width: sigWidth });
   doc.font('Helvetica').fontSize(9)
-    .text('Firma del técnico:', marginX + pageWidth - sigWidth, sigY, { width: sigWidth, align: 'center' });
+    .text('Firma del tecnico:', marginX + pageWidth - sigWidth, sigY, { width: sigWidth, align: 'center' });
 
   const sig2Y = doc.y + 30;
   doc.font('Helvetica').fontSize(9)
@@ -445,7 +537,7 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   doc.font('Helvetica').fontSize(9)
     .text('Firma de recibido:', marginX + pageWidth - sigWidth, sig2Y, { width: sigWidth, align: 'center' });
 
-  // Líneas de firma
+  // Lineas de firma
   doc.moveTo(marginX, sigY + 40).lineTo(marginX + sigWidth, sigY + 40).stroke();
   doc.moveTo(marginX + pageWidth - sigWidth, sigY + 40).lineTo(marginX + pageWidth, sigY + 40).stroke();
   doc.moveTo(marginX, sig2Y + 40).lineTo(marginX + sigWidth, sig2Y + 40).stroke();
@@ -455,11 +547,11 @@ router.post('/generate-diagnostic-pdf', (req, res) => {
   const footerY = doc.page.height - 35;
   doc.font('Helvetica').fontSize(7).fillColor('#888')
     .text(
-      'Taller Pacheco · Mecánica · Electricidad · Electrónica · Aire acondicionado · Diagnóstico automotriz\nDocumento de diagnóstico técnico — conservar junto con la orden de servicio.',
+      'Taller Pacheco · Mecanica · Electricidad · Electronica · Aire acondicionado · Diagnostico automotriz\nDocumento de diagnostico tecnico - conservar junto con la orden de servicio.',
       marginX, footerY, { width: pageWidth, align: 'center', lineGap: 2 }
     );
 
   doc.end();
 });
 
-module.exports = router;
+module.exports = app;

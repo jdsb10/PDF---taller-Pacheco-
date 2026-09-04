@@ -1,4 +1,8 @@
+/* ===========================
+   COTIZACIÓN / FACTURA
+   =========================== */
 const itemsBody = document.getElementById('items-body');
+const itemsCards = document.getElementById('items-cards');
 const subtotalDisplay = document.getElementById('subtotal-display');
 const ivaDisplay = document.getElementById('iva-display');
 const totalDisplay = document.getElementById('total-display');
@@ -9,7 +13,12 @@ function money(n) {
   return '$ ' + value.toLocaleString('es-CO', { maximumFractionDigits: 0 });
 }
 
+let rowIndex = 0;
+
 function addRow(values = {}) {
+  const idx = rowIndex++;
+
+  // Desktop: fila en tabla
   const row = document.createElement('tr');
   row.innerHTML = `
     <td><input type="text" class="f-descripcion" value="${values.descripcion || ''}" /></td>
@@ -17,16 +26,18 @@ function addRow(values = {}) {
     <td><input type="text" class="f-tiempo" value="${values.tiempo || ''}" /></td>
     <td><input type="number" class="f-valor" min="0" value="${values.valor || ''}" /></td>
     <td><input type="number" class="f-total" min="0" value="${values.total || ''}" /></td>
-    <td class="col-actions"><button type="button" class="row-remove" title="Quitar fila">&times;</button></td>
+    <td class="col-actions"><button type="button" class="row-remove-table" title="Quitar fila">&times;</button></td>
   `;
-  row.querySelector('.row-remove').addEventListener('click', () => {
+  row.querySelector('.row-remove-table').addEventListener('click', () => {
     row.remove();
+    removeItemCard(idx);
     recalcTotals();
   });
   row.querySelector('.f-valor').addEventListener('input', (e) => {
     const totalInput = row.querySelector('.f-total');
     if (!totalInput.dataset.touched) {
       totalInput.value = e.target.value;
+      syncCardField(idx, 'total', e.target.value);
     }
     recalcTotals();
   });
@@ -35,12 +46,96 @@ function addRow(values = {}) {
     recalcTotals();
   });
   itemsBody.appendChild(row);
+
+  // Mobile: tarjeta apilada
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.dataset.idx = idx;
+  card.innerHTML = `
+    <button type="button" class="row-remove" title="Quitar fila">&times;</button>
+    <div class="field">
+      <label>Descripción</label>
+      <input type="text" class="f-descripcion" value="${values.descripcion || ''}" />
+    </div>
+    <div class="field">
+      <label>Materiales/Repuestos</label>
+      <input type="text" class="f-materiales" value="${values.materiales || ''}" />
+    </div>
+    <div class="grid">
+      <div class="field">
+        <label>Tiempo estimado</label>
+        <input type="text" class="f-tiempo" value="${values.tiempo || ''}" />
+      </div>
+      <div class="field">
+        <label>Valor estimado</label>
+        <input type="number" class="f-valor" min="0" value="${values.valor || ''}" />
+      </div>
+      <div class="field">
+        <label>Total</label>
+        <input type="number" class="f-total" min="0" value="${values.total || ''}" />
+      </div>
+    </div>
+  `;
+  card.querySelector('.row-remove').addEventListener('click', () => {
+    card.remove();
+    removeTableRow(idx);
+    recalcTotals();
+  });
+  card.querySelector('.f-valor').addEventListener('input', (e) => {
+    const totalInput = card.querySelector('.f-total');
+    if (!totalInput.dataset.touched) {
+      totalInput.value = e.target.value;
+      syncTableRow(idx, 'total', e.target.value);
+    }
+    recalcTotals();
+  });
+  card.querySelector('.f-total').addEventListener('input', (e) => {
+    e.target.dataset.touched = 'true';
+    recalcTotals();
+  });
+  itemsCards.appendChild(card);
+}
+
+function removeItemCard(idx) {
+  const card = itemsCards.querySelector(`[data-idx="${idx}"]`);
+  if (card) card.remove();
+}
+
+function removeTableRow(idx) {
+  const rows = itemsBody.querySelectorAll('tr');
+  rows.forEach((row) => {
+    const totalInput = row.querySelector('.f-total');
+    if (totalInput && totalInput.dataset.idx === String(idx)) {
+      row.remove();
+    }
+  });
+}
+
+function syncCardField(idx, field, value) {
+  const card = itemsCards.querySelector(`[data-idx="${idx}"]`);
+  if (card) {
+    const input = card.querySelector(`.f-${field}`);
+    if (input) input.value = value;
+  }
+}
+
+function syncTableRow(idx, field, value) {
+  const rows = itemsBody.querySelectorAll('tr');
+  rows.forEach((row) => {
+    const totalInput = row.querySelector('.f-total');
+    if (totalInput && totalInput.dataset.idx === String(idx)) {
+      const input = row.querySelector(`.f-${field}`);
+      if (input) input.value = value;
+    }
+  });
 }
 
 function recalcTotals() {
   let subtotal = 0;
-  itemsBody.querySelectorAll('tr').forEach((row) => {
-    subtotal += Number(row.querySelector('.f-total').value) || 0;
+  // Use cards on mobile, table on desktop
+  const activeContainer = window.innerWidth <= 640 ? itemsCards : itemsBody;
+  activeContainer.querySelectorAll('.f-total').forEach((input) => {
+    subtotal += Number(input.value) || 0;
   });
   const iva = subtotal * 0.19;
   const descuentos = Number(descuentosInput.value) || 0;
@@ -63,6 +158,14 @@ function suggestDocumentNo(tipo) {
   return `${prefix}-${y}${m}${d}`;
 }
 
+function suggestDiagNo() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `DIAG-${y}${m}${d}`;
+}
+
 function buildDefaultNotas(tipo) {
   const palabra = tipo === 'factura' ? 'Factura' : 'Cotización';
   const participio = tipo === 'factura' ? 'facturados' : 'cotizados';
@@ -73,14 +176,14 @@ function buildDefaultNotas(tipo) {
   );
 }
 
-const tipoDocumentoSelect = document.getElementById('tipoDocumento');
 const numeroInput = document.getElementById('cotizacionNo');
 const notasTextarea = document.getElementById('notas');
 let lastAutoNumero = '';
 let lastAutoNotas = '';
+let currentTipo = 'cotizacion';
 
 function applyDocumentType() {
-  const tipo = tipoDocumentoSelect.value;
+  const tipo = currentTipo;
   const esFactura = tipo === 'factura';
 
   document.getElementById('label-numero').textContent = esFactura ? 'Factura No' : 'Cotización No';
@@ -98,14 +201,12 @@ function applyDocumentType() {
   }
 }
 
-tipoDocumentoSelect.addEventListener('change', applyDocumentType);
-
 function initForm() {
-  lastAutoNumero = suggestDocumentNo(tipoDocumentoSelect.value);
+  lastAutoNumero = suggestDocumentNo(currentTipo);
   numeroInput.value = lastAutoNumero;
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('fecha').value = today;
-  lastAutoNotas = buildDefaultNotas(tipoDocumentoSelect.value);
+  lastAutoNotas = buildDefaultNotas(currentTipo);
   notasTextarea.value = lastAutoNotas;
   applyDocumentType();
 
@@ -113,6 +214,116 @@ function initForm() {
   recalcTotals();
 }
 
+/* ===========================
+   CARTA DIAGNÓSTICO
+   =========================== */
+const hallazgosBody = document.getElementById('hallazgos-body');
+let hallazgoIndex = 0;
+
+function addHallazgo(values = {}) {
+  const idx = hallazgoIndex++;
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><input type="text" class="f-sistema" value="${values.sistema || ''}" placeholder="Ej. Motor" /></td>
+    <td><input type="text" class="f-codigo" value="${values.codigo || ''}" placeholder="Ej. P0301" /></td>
+    <td><input type="text" class="f-falla" value="${values.falla || ''}" placeholder="Descripción" /></td>
+    <td>
+      <select class="f-estado">
+        <option value="Pendiente" ${values.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+        <option value="Reparado" ${values.estado === 'Reparado' ? 'selected' : ''}>Reparado</option>
+        <option value="Por revisar" ${values.estado === 'Por revisar' ? 'selected' : ''}>Por revisar</option>
+        <option value="No aplica" ${values.estado === 'No aplica' ? 'selected' : ''}>No aplica</option>
+      </select>
+    </td>
+    <td class="col-actions"><button type="button" class="row-remove-table" title="Quitar">&times;</button></td>
+  `;
+  row.querySelector('.row-remove-table').addEventListener('click', () => row.remove());
+  hallazgosBody.appendChild(row);
+}
+
+document.getElementById('btn-add-hallazgo').addEventListener('click', () => addHallazgo());
+
+// Checkbox "Otro"
+document.getElementById('proc-otro-check').addEventListener('change', (e) => {
+  document.getElementById('proc-otro-field').style.display = e.target.checked ? 'block' : 'none';
+});
+
+function initDiagnosticoForm() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('diag-fecha').value = today;
+  document.getElementById('diag-numero').value = suggestDiagNo();
+  for (let i = 0; i < 3; i += 1) addHallazgo();
+}
+
+function collectDiagnosticoData() {
+  const procs = [];
+  if (document.getElementById('proc-inspeccion').checked) procs.push('Inspección visual y revisión general');
+  if (document.getElementById('proc-escaneo').checked) procs.push('Escaneo electrónico / lectura de códigos de falla');
+  if (document.getElementById('proc-sensores').checked) procs.push('Pruebas de sensores y actuadores');
+  if (document.getElementById('proc-electricas').checked) procs.push('Pruebas eléctricas: alimentación, tierras, continuidad y señales');
+  if (document.getElementById('proc-mecanicas').checked) procs.push('Pruebas mecánicas / funcionamiento del sistema');
+  if (document.getElementById('proc-carretera').checked) procs.push('Prueba de carretera / prueba de funcionamiento');
+  if (document.getElementById('proc-otro-check').checked) {
+    const otro = document.getElementById('proc-otro-text').value.trim();
+    procs.push(otro ? `Otro: ${otro}` : 'Otro');
+  }
+
+  const hallazgos = Array.from(hallazgosBody.querySelectorAll('tr')).map((row) => ({
+    sistema: row.querySelector('.f-sistema').value,
+    codigo: row.querySelector('.f-codigo').value,
+    falla: row.querySelector('.f-falla').value,
+    estado: row.querySelector('.f-estado').value,
+  })).filter((h) => h.sistema || h.codigo || h.falla);
+
+  return {
+    fecha: document.getElementById('diag-fecha').value,
+    numero: document.getElementById('diag-numero').value,
+    cliente: document.getElementById('diag-cliente').value,
+    telefono: document.getElementById('diag-telefono').value,
+    vehiculo: document.getElementById('diag-vehiculo').value,
+    placa: document.getElementById('diag-placa').value,
+    marcaModeloAnio: document.getElementById('diag-marca-modelo').value,
+    kilometraje: document.getElementById('diag-kilometraje').value,
+    motivo: document.getElementById('diag-motivo').value,
+    procedimientos: procs,
+    hallazgos,
+    explicacion: document.getElementById('diag-explicacion').value,
+    recomendacion: document.getElementById('diag-recomendacion').value,
+    realizadoPor: document.getElementById('diag-realizado-por').value,
+    clienteNombre: document.getElementById('diag-cliente-nombre').value,
+    firmaTecnico: signatures.tecnico,
+    firmaRecibido: signatures.recibido,
+  };
+}
+
+/* ===========================
+   SELECTOR DE TIPO
+   =========================== */
+const tipoBtns = document.querySelectorAll('.tipo-btn');
+const sectionCotizacion = document.getElementById('section-cotizacion');
+const sectionDiagnostico = document.getElementById('section-diagnostico');
+
+function setTipo(tipo) {
+  currentTipo = tipo;
+  tipoBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.tipo === tipo));
+
+  if (tipo === 'diagnostico') {
+    sectionCotizacion.classList.remove('active');
+    sectionDiagnostico.classList.add('active');
+  } else {
+    sectionCotizacion.classList.add('active');
+    sectionDiagnostico.classList.remove('active');
+    applyDocumentType();
+  }
+}
+
+tipoBtns.forEach((btn) => {
+  btn.addEventListener('click', () => setTipo(btn.dataset.tipo));
+});
+
+/* ===========================
+   CARGAR USUARIO
+   =========================== */
 async function loadUser() {
   try {
     const response = await fetch('/api/auth/me');
@@ -132,22 +343,27 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
   window.location.href = '/login.html';
 });
 
-// ----- Generar PDF -----
+/* ===========================
+   GENERAR PDF COTIZACIÓN/FACTURA
+   =========================== */
 document.getElementById('btn-generate').addEventListener('click', async () => {
   const messageEl = document.getElementById('generate-message');
   messageEl.textContent = '';
   messageEl.className = 'message';
 
-  const items = Array.from(itemsBody.querySelectorAll('tr')).map((row) => ({
-    descripcion: row.querySelector('.f-descripcion').value,
-    materiales: row.querySelector('.f-materiales').value,
-    tiempo: row.querySelector('.f-tiempo').value,
-    valor: Number(row.querySelector('.f-valor').value) || 0,
-    total: Number(row.querySelector('.f-total').value) || 0,
+  const activeContainer = window.innerWidth <= 640 ? itemsCards : itemsBody;
+  const items = Array.from(activeContainer.querySelectorAll(
+    window.innerWidth <= 640 ? '.item-card' : 'tr'
+  )).map((el) => ({
+    descripcion: el.querySelector('.f-descripcion').value,
+    materiales: el.querySelector('.f-materiales').value,
+    tiempo: el.querySelector('.f-tiempo').value,
+    valor: Number(el.querySelector('.f-valor').value) || 0,
+    total: Number(el.querySelector('.f-total').value) || 0,
   }));
 
   const payload = {
-    tipoDocumento: tipoDocumentoSelect.value,
+    tipoDocumento: currentTipo,
     cotizacionNo: document.getElementById('cotizacionNo').value,
     fecha: document.getElementById('fecha').value,
     cliente: document.getElementById('cliente').value,
@@ -195,7 +411,51 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   }
 });
 
-// ----- Cambiar contraseña -----
+/* ===========================
+   GENERAR PDF CARTA DIAGNÓSTICO
+   =========================== */
+document.getElementById('btn-generate-diag').addEventListener('click', async () => {
+  const messageEl = document.getElementById('generate-message-diag');
+  messageEl.textContent = '';
+  messageEl.className = 'message';
+
+  const payload = collectDiagnosticoData();
+
+  try {
+    const response = await fetch('/api/quote/generate-diagnostic-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      messageEl.textContent = data.error || 'No se pudo generar el PDF';
+      messageEl.classList.add('error');
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `diagnostico-${payload.numero || 'sin-numero'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    messageEl.textContent = 'PDF generado correctamente';
+    messageEl.classList.add('success');
+  } catch (err) {
+    messageEl.textContent = 'Error de conexión con el servidor';
+    messageEl.classList.add('error');
+  }
+});
+
+/* ===========================
+   CAMBIAR CONTRASEÑA
+   =========================== */
 const passwordModal = document.getElementById('password-modal');
 
 document.getElementById('btn-change-password').addEventListener('click', () => {
@@ -236,8 +496,10 @@ document.getElementById('password-form').addEventListener('submit', async (event
   }
 });
 
-// ----- Firmas -----
-const signatures = { cliente: null, taller: null };
+/* ===========================
+   FIRMAS
+   =========================== */
+const signatures = { cliente: null, taller: null, tecnico: null, recibido: null };
 const signatureModal = document.getElementById('signature-modal');
 const signatureCanvas = document.getElementById('signature-canvas');
 const signatureCtx = signatureCanvas.getContext('2d');
@@ -301,11 +563,24 @@ function updateSignaturePreview(target) {
   }
 }
 
+// Firmas cotización/factura
 document.querySelectorAll('.btn-firmar').forEach((button) => {
   button.addEventListener('click', () => {
     currentSignatureTarget = button.dataset.target;
     signatureModalTitle.textContent =
       currentSignatureTarget === 'cliente' ? 'Firma del Cliente' : 'Firma de Taller Pacheco';
+    signatureMessage.textContent = '';
+    clearSignatureCanvas();
+    signatureModal.classList.remove('hidden');
+  });
+});
+
+// Firmas carta diagnóstico
+document.querySelectorAll('.btn-firmar-diag').forEach((button) => {
+  button.addEventListener('click', () => {
+    currentSignatureTarget = button.dataset.target;
+    signatureModalTitle.textContent =
+      currentSignatureTarget === 'tecnico' ? 'Firma del Técnico' : 'Firma de Recibido (Cliente)';
     signatureMessage.textContent = '';
     clearSignatureCanvas();
     signatureModal.classList.remove('hidden');
@@ -330,5 +605,9 @@ document.getElementById('btn-save-signature').addEventListener('click', () => {
   signatureModal.classList.add('hidden');
 });
 
+/* ===========================
+   INIT
+   =========================== */
 loadUser();
 initForm();
+initDiagnosticoForm();
